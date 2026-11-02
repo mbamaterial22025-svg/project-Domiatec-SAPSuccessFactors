@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: weighted-kanban-app
+    env: node
+    plan: free
+    buildCommand: npm run setup && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production

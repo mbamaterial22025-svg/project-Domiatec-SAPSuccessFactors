@@ -1,0 +1,16 @@
+{
+  "name": "weighted-kanban-fullstack",
+  "version": "1.0.0",
+  "description": "Fullstack Weighted Kanban & Timeline Tracker System (SQLite + Express + React + Tailwind)",
+  "scripts": {
+    "setup": "npm --prefix backend install && npm --prefix frontend install && npm run db:init",
+    "db:init": "npm --prefix backend run db:init",
+    "build": "npm --prefix frontend run build",
+    "start": "npm --prefix backend start",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev": "node run-dev.js"
+  },
+  "keywords": ["kanban", "weighted-points", "timeline", "react", "express", "sqlite"]
+}
+

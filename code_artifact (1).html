@@ -1,0 +1,2430 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlRoot">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة كانبان الموزونة بالنقاط ومتتبع الجدول الزمني | Weighted Kanban & Timeline Tracker</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Cairo (Arabic) & Inter (English) -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        cairo: ['Cairo', 'sans-serif'],
+                        inter: ['Inter', 'Cairo', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Cairo', 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        html[dir="ltr"] body {
+            font-family: 'Inter', 'Cairo', sans-serif;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .drag-over {
+            background-color: #eef2ff !important;
+            border-color: #6366f1 !important;
+            border-style: dashed !important;
+        }
+        .task-card {
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .task-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+        }
+        .admin-draggable:active {
+            cursor: grabbing;
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Top Role / Mode Banner (Distinguishes Admin Page vs Management Read-Only Page) -->
+    <div id="roleBanner" class="bg-slate-900 text-white text-xs py-2 px-4 sm:px-6 border-b border-slate-800 transition-colors duration-300">
+        <div class="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-2">
+            <!-- Left/Right Mode Indicator -->
+            <div class="flex items-center gap-2.5">
+                <span id="roleStatusBadge" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
+                    <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+                    <span id="roleStatusText">صفحة الأدمن (تحكم كامل)</span>
+                </span>
+                <span id="cloudSyncBadge" class="inline-flex items-center gap-1.5 text-[11px] text-slate-300">
+                    <span id="cloudSyncDot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span id="cloudSyncText">متصل ومتزامن تلقائياً</span>
+                </span>
+            </div>
+
+            <!-- Role Switcher, Free Hosting Guide & Language Toggle -->
+            <div class="flex items-center gap-2">
+                <!-- Switch between Management Read-Only Page and Admin Page -->
+                <div class="bg-slate-800 p-0.5 rounded-lg flex items-center border border-slate-700">
+                    <button id="btnRoleManagement" onclick="requestRoleSwitch('management')" class="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold transition text-slate-300 hover:text-white">
+                        <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                        <span data-i18n="navManagementPage">صفحة عرض الإدارة</span>
+                    </button>
+                    <button id="btnRoleAdmin" onclick="requestRoleSwitch('admin')" class="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold transition bg-indigo-600 text-white shadow-xs">
+                        <i data-lucide="lock-keyhole" class="w-3.5 h-3.5"></i>
+                        <span data-i18n="navAdminPage">صفحة الأدمن</span>
+                    </button>
+                </div>
+
+                <!-- Share & Free Web Hosting Guide Button -->
+                <button onclick="openShareHostingModal()" class="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-xs">
+                    <i data-lucide="globe" class="w-3.5 h-3.5"></i>
+                    <span data-i18n="btnHostingAndShare">مشاركة ورفع مجاني</span>
+                </button>
+
+                <!-- Instant Language Switcher (AR / EN) -->
+                <button onclick="toggleLanguage()" class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-extrabold bg-white/10 hover:bg-white/20 text-white border border-white/15 transition">
+                    <i data-lucide="languages" class="w-3.5 h-3.5 text-amber-300"></i>
+                    <span id="langToggleLabel">English (EN)</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+        <div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-3.5">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                
+                <!-- Brand & Project Title -->
+                <div class="flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-md shadow-indigo-200 shrink-0">
+                        <i data-lucide="kanban" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span data-i18n="systemTag" class="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200">نظام النقاط الموزونة</span>
+                            <span id="readOnlyPill" class="hidden text-xs font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 items-center gap-1">
+                                <i data-lucide="eye" class="w-3 h-3"></i>
+                                <span data-i18n="readOnlyBadge">وضع العرض التنفيذي للإدارة (للقراءة فقط)</span>
+                            </span>
+                            <span class="text-xs text-slate-500 flex items-center gap-1">
+                                <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+                                <span id="currentDateDisplay"></span>
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-2 mt-0.5">
+                            <h1 id="projectTitleDisplay" onclick="openProjectSettingsModal()" class="text-lg sm:text-xl font-extrabold text-slate-900 transition flex items-center gap-1.5">
+                                <span id="projectTitleText">مشروع تطوير المنصة الرقمية 2026</span>
+                                <i id="editTitleIcon" data-lucide="pen-line" class="w-4 h-4 text-slate-400 cursor-pointer hover:text-indigo-600"></i>
+                            </h1>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- View Switcher & Action Controls -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <!-- 3 Views: Kanban Board | Project Timeline | Executive Summary -->
+                    <div class="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200">
+                        <button id="btnViewKanban" onclick="switchView('kanban')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition bg-white text-indigo-600 shadow-xs">
+                            <i data-lucide="columns-4" class="w-4 h-4"></i>
+                            <span data-i18n="tabKanban">لوحة كانبان</span>
+                        </button>
+                        <button id="btnViewTimeline" onclick="switchView('timeline')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition text-slate-600 hover:text-slate-900">
+                            <i data-lucide="gantt-chart" class="w-4 h-4"></i>
+                            <span data-i18n="tabTimeline">الجدول الزمني</span>
+                        </button>
+                        <button id="btnViewExecutive" onclick="switchView('executive')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition text-slate-600 hover:text-slate-900">
+                            <i data-lucide="pie-chart" class="w-4 h-4"></i>
+                            <span data-i18n="tabExecutive">تقرير الإدارة</span>
+                        </button>
+                    </div>
+
+                    <!-- Admin-Only Controls -->
+                    <div id="adminHeaderControls" class="flex flex-wrap items-center gap-2">
+                        <!-- WIP Limit & Project Settings Button -->
+                        <button onclick="openProjectSettingsModal()" class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition">
+                            <i data-lucide="sliders-horizontal" class="w-4 h-4 text-indigo-600"></i>
+                            <span><span data-i18n="wipLimitLabel">حد التنفيذ:</span> <strong id="headerWipLimit">15</strong> <span data-i18n="ptShort">ن</span></span>
+                        </button>
+
+                        <!-- Reset Default Data -->
+                        <button onclick="openResetModal()" class="flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-white hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 transition" title="Reset Default Data">
+                            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                        </button>
+
+                        <!-- Add New Activity Button -->
+                        <button onclick="openTaskModal()" class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 transition">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                            <span data-i18n="btnAddActivity">نشاط جديد</span>
+                        </button>
+                    </div>
+
+                    <!-- Export CSV (Available to both Management & Admin) -->
+                    <button onclick="exportCSV()" class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 transition">
+                        <i data-lucide="download" class="w-4 h-4 text-emerald-600"></i>
+                        <span class="hidden sm:inline" data-i18n="btnExportCSV">تصدير Excel/CSV</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-5 flex-1 flex flex-col gap-5">
+
+        <!-- Executive Metrics & Weighted Points Progress Bar -->
+        <section class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            
+            <!-- Overall Weighted Points Progress Card (5 cols on lg) -->
+            <div class="lg:col-span-5 bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-2">
+                    <div>
+                        <span data-i18n="weightedSubtitle" class="text-xs font-bold text-slate-400 uppercase">الإنجاز الفعلي الموزون بالنقاط</span>
+                        <h2 class="text-base sm:text-lg font-extrabold text-slate-800 flex items-center gap-2">
+                            <span data-i18n="weightedTitle">تقدم نقاط المشروع</span>
+                            <span id="weightedProgressBadge" class="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold">0%</span>
+                        </h2>
+                    </div>
+                    <div class="text-end">
+                        <div class="text-2xl sm:text-3xl font-black text-indigo-600" id="completedPointsSummary">0 / 0</div>
+                        <div data-i18n="completedPtsUnit" class="text-xs text-slate-500 font-medium">نقطة مكتملة</div>
+                    </div>
+                </div>
+
+                <!-- Segmented Progress Bar -->
+                <div class="w-full h-3.5 bg-slate-100 rounded-full overflow-hidden flex my-2 border border-slate-200/60">
+                    <div id="barDone" class="bg-emerald-500 h-full transition-all duration-500" style="width: 0%"></div>
+                    <div id="barReview" class="bg-amber-400 h-full transition-all duration-500" style="width: 0%"></div>
+                    <div id="barProgress" class="bg-indigo-500 h-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+
+                <!-- Legend -->
+                <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600 pt-1">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+                        <span><span data-i18n="statusDone">مكتمل</span>: <strong id="legendDonePts">0</strong> <span data-i18n="ptShort">ن</span></span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span>
+                        <span><span data-i18n="statusReviewShort">مراجعة</span>: <strong id="legendReviewPts">0</strong> <span data-i18n="ptShort">ن</span></span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 inline-block"></span>
+                        <span><span data-i18n="statusProgressShort">تنفيذ</span>: <strong id="legendProgressPts">0</strong> <span data-i18n="ptShort">ن</span></span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-slate-300 inline-block"></span>
+                        <span><span data-i18n="statusBacklogShort">انتظار</span>: <strong id="legendBacklogPts">0</strong> <span data-i18n="ptShort">ن</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4 KPI Cards (7 cols on lg) -->
+            <div class="lg:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                
+                <!-- Total Points & Activities -->
+                <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span data-i18n="kpiTotalVolume" class="text-xs font-bold text-slate-500">إجمالي حجم المشروع</span>
+                        <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                            <i data-lucide="layers" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <div class="text-2xl font-black text-slate-900">
+                            <span id="kpiTotalPoints">0</span>
+                            <span data-i18n="pointsWord" class="text-xs font-bold text-slate-500">نقطة</span>
+                        </div>
+                        <div class="text-xs text-slate-500 mt-0.5">
+                            <span data-i18n="acrossTasksPrefix">موزعة على</span>
+                            <strong id="kpiTotalTasks" class="text-slate-700">0</strong>
+                            <span data-i18n="activitiesWord">أنشطة</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active WIP Load -->
+                <div id="kpiWipCard" class="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs flex flex-col justify-between transition">
+                    <div class="flex items-center justify-between">
+                        <span data-i18n="kpiWipTitle" class="text-xs font-bold text-slate-500">ضغط قيد التنفيذ (WIP)</span>
+                        <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                            <i data-lucide="activity" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <div class="text-2xl font-black text-slate-900">
+                            <span id="kpiInProgressPoints">0</span>
+                            <span class="text-sm font-bold text-slate-400">/ <span id="kpiWipLimit">15</span> <span data-i18n="ptShort">ن</span></span>
+                        </div>
+                        <div id="kpiWipStatusText" class="text-xs text-emerald-600 font-semibold mt-0.5">ضمن الحد الآمن</div>
+                    </div>
+                </div>
+
+                <!-- Overdue Tasks -->
+                <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span data-i18n="kpiOverdueTitle" class="text-xs font-bold text-slate-500">أنشطة متأخرة</span>
+                        <div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+                            <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <div class="text-2xl font-black text-rose-600">
+                            <span id="kpiOverdueCount">0</span>
+                            <span data-i18n="activitySingular" class="text-xs font-bold text-slate-500">نشاط</span>
+                        </div>
+                        <div class="text-xs text-slate-500 mt-0.5">
+                            <span data-i18n="totalWord">بإجمالي</span>
+                            <strong id="kpiOverduePoints" class="text-rose-600">0</strong>
+                            <span data-i18n="overduePtsSuffix">نقطة متأخرة</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Due Soon (Within 3 Days) -->
+                <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span data-i18n="kpiDueSoonTitle" class="text-xs font-bold text-slate-500">قريبة الاستحقاق (3 أيام)</span>
+                        <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                            <i data-lucide="clock" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <div class="text-2xl font-black text-amber-600">
+                            <span id="kpiDueSoonCount">0</span>
+                            <span data-i18n="activitySingular" class="text-xs font-bold text-slate-500">نشاط</span>
+                        </div>
+                        <div class="text-xs text-slate-500 mt-0.5">
+                            <span data-i18n="totalWord">بإجمالي</span>
+                            <strong id="kpiDueSoonPoints" class="text-amber-600">0</strong>
+                            <span data-i18n="urgentPtsSuffix">نقطة عاجلة</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Filter & Search Toolbar -->
+        <section class="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-2.5 flex-1">
+                <!-- Search Input -->
+                <div class="relative min-w-[210px] flex-1 sm:max-w-xs">
+                    <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute top-1/2 -translate-y-1/2 start-3"></i>
+                    <input id="searchInput" oninput="renderAll()" type="text" placeholder="ابحث عن نشاط أو مسؤول..." class="w-full ps-9 pe-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:bg-white focus:border-indigo-500 transition">
+                </div>
+
+                <!-- Category Filter -->
+                <select id="filterCategory" onchange="renderAll()" class="text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-slate-700 font-medium focus:outline-none focus:border-indigo-500">
+                    <option value="all" data-i18n="filterAllCategories">جميع الفئات</option>
+                    <option value="frontend" data-i18n="catFrontend">تطوير الواجهات</option>
+                    <option value="infra" data-i18n="catInfra">البنية التحتية</option>
+                    <option value="security" data-i18n="catSecurity">أمن المعلومات</option>
+                    <option value="database" data-i18n="catDatabase">قواعد البيانات</option>
+                    <option value="management" data-i18n="catManagement">إدارة وتحليل</option>
+                    <option value="qa" data-i18n="catQA">اختبار وجودة</option>
+                </select>
+
+                <!-- Deadline Alert Filter -->
+                <select id="filterDeadline" onchange="renderAll()" class="text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-slate-700 font-medium focus:outline-none focus:border-indigo-500">
+                    <option value="all" data-i18n="filterAllDeadlines">جميع المواعيد النهائية</option>
+                    <option value="overdue" data-i18n="filterOverdue">🔴 متأخر عن الموعد</option>
+                    <option value="soon" data-i18n="filterSoon">🟡 قريب الاستحقاق (خلال 3 أيام)</option>
+                    <option value="ontrack" data-i18n="filterOnTrack">🟢 في المسار الصحيح</option>
+                </select>
+
+                <!-- Assignee Filter -->
+                <select id="filterAssignee" onchange="renderAll()" class="text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-slate-700 font-medium focus:outline-none focus:border-indigo-500">
+                    <option value="all">جميع المسؤولين</option>
+                </select>
+            </div>
+
+            <!-- Quick Legend for Alerts -->
+            <div class="flex items-center gap-2 text-xs text-slate-500">
+                <span class="hidden xl:inline font-semibold" data-i18n="legendAlertsLabel">دليل التنبيهات:</span>
+                <span data-i18n="badgeOverdue" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 font-semibold">متأخر</span>
+                <span data-i18n="badgeDueSoon" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 font-semibold">قريب الاستحقاق</span>
+                <span data-i18n="badgeOnTrack" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">في الموعد</span>
+            </div>
+        </section>
+
+        <!-- VIEW 1: WEIGHTED KANBAN BOARD -->
+        <section id="kanbanView" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 flex-1 items-start">
+            
+            <!-- Column 1: Backlog -->
+            <div class="bg-slate-100/90 rounded-2xl border border-slate-200/80 flex flex-col max-h-[75vh]"
+                 ondragover="handleDragOver(event, 'backlog')"
+                 ondragleave="handleDragLeave(event)"
+                 ondrop="handleDrop(event, 'backlog')">
+                <div class="p-3.5 border-b border-slate-200/80 bg-white/60 rounded-t-2xl flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-slate-400"></span>
+                        <h3 data-i18n="colBacklog" class="font-extrabold text-slate-800 text-sm sm:text-base">قائمة الانتظار</h3>
+                        <span id="count-backlog" class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">0</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span id="points-backlog" class="text-xs font-extrabold px-2.5 py-1 rounded-lg bg-slate-800 text-white shadow-xs">0 نقطة</span>
+                        <button onclick="openTaskModal(null, 'backlog')" class="admin-only-btn p-1 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="col-backlog" class="p-3 space-y-3 overflow-y-auto flex-1 min-h-[220px]"></div>
+            </div>
+
+            <!-- Column 2: In Progress (With WIP Point Limit Warning) -->
+            <div id="colWrapper-inprogress" class="bg-slate-100/90 rounded-2xl border border-slate-200/80 flex flex-col max-h-[75vh] transition"
+                 ondragover="handleDragOver(event, 'inprogress')"
+                 ondragleave="handleDragLeave(event)"
+                 ondrop="handleDrop(event, 'inprogress')">
+                <div class="p-3.5 border-b border-slate-200/80 bg-white/60 rounded-t-2xl flex flex-col gap-1.5">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-indigo-500 animate-pulse"></span>
+                            <h3 data-i18n="colInProgress" class="font-extrabold text-slate-800 text-sm sm:text-base">قيد التنفيذ</h3>
+                            <span id="count-inprogress" class="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">0</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span id="points-inprogress" class="text-xs font-extrabold px-2.5 py-1 rounded-lg bg-indigo-600 text-white shadow-xs">0 / 15 نقطة</span>
+                            <button onclick="openTaskModal(null, 'inprogress')" class="admin-only-btn p-1 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition">
+                                <i data-lucide="plus" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- WIP Warning Banner -->
+                    <div id="wipAlertBanner" class="hidden text-xs px-2.5 py-1 rounded-lg bg-rose-100 text-rose-800 border border-rose-300 font-bold flex items-center gap-1.5">
+                        <i data-lucide="alert-octagon" class="w-3.5 h-3.5 shrink-0"></i>
+                        <span data-i18n="wipOverloadBanner">تجاوز حد النقاط المسموح به في نفس الوقت!</span>
+                    </div>
+                </div>
+                <div id="col-inprogress" class="p-3 space-y-3 overflow-y-auto flex-1 min-h-[220px]"></div>
+            </div>
+
+            <!-- Column 3: Review -->
+            <div class="bg-slate-100/90 rounded-2xl border border-slate-200/80 flex flex-col max-h-[75vh]"
+                 ondragover="handleDragOver(event, 'review')"
+                 ondragleave="handleDragLeave(event)"
+                 ondrop="handleDrop(event, 'review')">
+                <div class="p-3.5 border-b border-slate-200/80 bg-white/60 rounded-t-2xl flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-amber-400"></span>
+                        <h3 data-i18n="colReview" class="font-extrabold text-slate-800 text-sm sm:text-base">قيد المراجعة</h3>
+                        <span id="count-review" class="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">0</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span id="points-review" class="text-xs font-extrabold px-2.5 py-1 rounded-lg bg-amber-500 text-white shadow-xs">0 نقطة</span>
+                        <button onclick="openTaskModal(null, 'review')" class="admin-only-btn p-1 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="col-review" class="p-3 space-y-3 overflow-y-auto flex-1 min-h-[220px]"></div>
+            </div>
+
+            <!-- Column 4: Done -->
+            <div class="bg-slate-100/90 rounded-2xl border border-slate-200/80 flex flex-col max-h-[75vh]"
+                 ondragover="handleDragOver(event, 'done')"
+                 ondragleave="handleDragLeave(event)"
+                 ondrop="handleDrop(event, 'done')">
+                <div class="p-3.5 border-b border-slate-200/80 bg-white/60 rounded-t-2xl flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+                        <h3 data-i18n="colDone" class="font-extrabold text-slate-800 text-sm sm:text-base">مكتمل</h3>
+                        <span id="count-done" class="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">0</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span id="points-done" class="text-xs font-extrabold px-2.5 py-1 rounded-lg bg-emerald-600 text-white shadow-xs">0 نقطة</span>
+                        <button onclick="openTaskModal(null, 'done')" class="admin-only-btn p-1 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="col-done" class="p-3 space-y-3 overflow-y-auto flex-1 min-h-[220px]"></div>
+            </div>
+
+        </section>
+
+        <!-- VIEW 2: PROJECT TIMELINE & ROADMAP VIEW -->
+        <section id="timelineView" class="hidden bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex-col">
+            <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4 bg-slate-50/60">
+                <div>
+                    <h3 class="text-base sm:text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                        <i data-lucide="calendar-range" class="w-5 h-5 text-indigo-600"></i>
+                        <span data-i18n="timelineHeaderTitle">الجدول الزمني للأنشطة ونقاط المشروع (Project Points Timeline)</span>
+                    </h3>
+                    <p data-i18n="timelineHeaderSub" class="text-xs text-slate-500 mt-0.5">يعرض امتداد كل نشاط من تاريخ البدء إلى تاريخ الاستحقاق مع وزن النقاط وحالة الموعد النهائي</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <label data-i18n="sortByLabel" class="text-xs font-bold text-slate-600">ترتيب حسب:</label>
+                    <select id="timelineSort" onchange="renderTimeline()" class="text-xs sm:text-sm bg-white border border-slate-200 rounded-xl px-3 py-1.5 font-semibold text-slate-700 focus:outline-none focus:border-indigo-500">
+                        <option value="dueDate" data-i18n="sortDueDate">تاريخ الاستحقاق (الأقرب أولاً)</option>
+                        <option value="startDate" data-i18n="sortStartDate">تاريخ البدء</option>
+                        <option value="pointsDesc" data-i18n="sortPointsDesc">النقاط (الأعلى وزناً أولاً)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-start border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100/80 text-slate-600 text-xs uppercase border-b border-slate-200">
+                            <th data-i18n="thActivityCat" class="py-3.5 px-4 font-bold min-w-[230px] text-start">النشاط والفئة</th>
+                            <th data-i18n="thWeightPts" class="py-3.5 px-3 font-bold text-center w-28">الوزن (النقاط)</th>
+                            <th data-i18n="thAssignee" class="py-3.5 px-3 font-bold w-36 text-start">المسؤول</th>
+                            <th data-i18n="thStatus" class="py-3.5 px-3 font-bold w-36 text-start">الحالة</th>
+                            <th data-i18n="thPeriod" class="py-3.5 px-3 font-bold w-48 text-start">فترة التنفيذ</th>
+                            <th data-i18n="thGanttBar" class="py-3.5 px-4 font-bold min-w-[280px] text-start">المخطط الزمني وحالة الموعد</th>
+                            <th id="thActionCol" data-i18n="thAction" class="py-3.5 px-3 font-bold text-center w-24">إجراء</th>
+                        </tr>
+                    </thead>
+                    <tbody id="timelineTableBody" class="divide-y divide-slate-200 text-sm"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- VIEW 3: EXECUTIVE SUMMARY & TEAM/CATEGORY BREAKDOWN (Ideal for Management Review) -->
+        <section id="executiveView" class="hidden grid-cols-1 lg:grid-cols-2 gap-5">
+            <!-- Category Points Breakdown -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-xs p-5">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                    <div>
+                        <h3 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                            <i data-lucide="folder-kanban" class="w-5 h-5 text-indigo-600"></i>
+                            <span data-i18n="execCategoryTitle">توزيع النقاط ونسب الإنجاز حسب الفئة</span>
+                        </h3>
+                        <p data-i18n="execCategorySub" class="text-xs text-slate-500 mt-0.5">يوضح وزن كل مرحلة من المشروع وما تم إنجازه منها بالنقاط</p>
+                    </div>
+                </div>
+                <div id="categoryBreakdownList" class="space-y-4"></div>
+            </div>
+
+            <!-- Team / Assignee Workload Breakdown -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-xs p-5">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                    <div>
+                        <h3 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                            <i data-lucide="users" class="w-5 h-5 text-emerald-600"></i>
+                            <span data-i18n="execTeamTitle">توزيع النقاط ومعدل الإنجاز حسب المسؤول</span>
+                        </h3>
+                        <p data-i18n="execTeamSub" class="text-xs text-slate-500 mt-0.5">يتتبع عبء العمل (النقاط المسندة والمكتملة وقيد التنفيذ) لكل عضو</p>
+                    </div>
+                </div>
+                <div id="assigneeBreakdownList" class="space-y-4"></div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODAL 1: ADD / EDIT BILINGUAL TASK (ADMIN ONLY) -->
+    <div id="taskModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden">
+            <div class="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                <h3 id="modalTitle" class="text-base sm:text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                    <i data-lucide="plus-circle" class="w-5 h-5 text-indigo-600"></i>
+                    <span data-i18n="modalAddTitle">إضافة نشاط جديد (عربي / إنجليزي)</span>
+                </h3>
+                <button onclick="closeTaskModal()" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="taskForm" onsubmit="saveTask(event)" class="p-5 space-y-4 max-h-[82vh] overflow-y-auto">
+                <input type="hidden" id="taskId">
+
+                <!-- Bilingual Titles -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                        <label data-i18n="lblTitleAr" class="block text-xs font-bold text-slate-700 mb-1">اسم النشاط (بالعربية) *</label>
+                        <input id="taskTitleAr" type="text" required placeholder="مثال: تطوير نظام الصلاحيات" class="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label data-i18n="lblTitleEn" class="block text-xs font-bold text-slate-700 mb-1">Activity Title (English)</label>
+                        <input id="taskTitleEn" type="text" dir="ltr" placeholder="e.g. Auth & RBAC Development" class="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <!-- Category & Points -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                        <label data-i18n="lblCategory" class="block text-xs font-bold text-slate-700 mb-1">الفئة / المرحلة *</label>
+                        <select id="taskCategory" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="frontend" data-i18n="catFrontend">تطوير الواجهات</option>
+                            <option value="infra" data-i18n="catInfra">البنية التحتية</option>
+                            <option value="security" data-i18n="catSecurity">أمن المعلومات</option>
+                            <option value="database" data-i18n="catDatabase">قواعد البيانات</option>
+                            <option value="management" data-i18n="catManagement">إدارة وتحليل</option>
+                            <option value="qa" data-i18n="catQA">اختبار وجودة</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label data-i18n="lblPoints" class="block text-xs font-bold text-slate-700 mb-1">قيمة النقاط (وزن الجهد) *</label>
+                        <select id="taskPoints" class="w-full px-3 py-2 text-sm font-bold border border-slate-300 rounded-xl bg-white text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="1">1 (Very Light / بسيط جداً)</option>
+                            <option value="2">2 (Light / خفيف)</option>
+                            <option value="3" selected>3 (Medium / متوسط)</option>
+                            <option value="5">5 (Large / كبير)</option>
+                            <option value="8">8 (Complex / معقد)</option>
+                            <option value="13">13 (Critical / ضخم وحرج)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Start Date & Due Date -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                        <label data-i18n="lblStartDate" class="block text-xs font-bold text-slate-700 mb-1">تاريخ البدء *</label>
+                        <input id="taskStartDate" type="date" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label data-i18n="lblDueDate" class="block text-xs font-bold text-slate-700 mb-1">تاريخ الاستحقاق (الموعد النهائي) *</label>
+                        <input id="taskDueDate" type="date" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <!-- Bilingual Assignee & Status -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                    <div>
+                        <label data-i18n="lblAssigneeAr" class="block text-xs font-bold text-slate-700 mb-1">المسؤول (عربي) *</label>
+                        <input id="taskAssigneeAr" type="text" required placeholder="م. أحمد طارق" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label data-i18n="lblAssigneeEn" class="block text-xs font-bold text-slate-700 mb-1">Assignee (EN)</label>
+                        <input id="taskAssigneeEn" type="text" dir="ltr" placeholder="Eng. Ahmed Tarek" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label data-i18n="lblStatus" class="block text-xs font-bold text-slate-700 mb-1">الحالة / العمود *</label>
+                        <select id="taskStatus" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="backlog" data-i18n="colBacklog">قائمة الانتظار</option>
+                            <option value="inprogress" data-i18n="colInProgress">قيد التنفيذ</option>
+                            <option value="review" data-i18n="colReview">قيد المراجعة</option>
+                            <option value="done" data-i18n="colDone">مكتمل</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Bilingual Notes -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                        <label data-i18n="lblNotesAr" class="block text-xs font-bold text-slate-700 mb-1">ملاحظات (عربي)</label>
+                        <textarea id="taskNotesAr" rows="2" placeholder="أي تفاصيل إضافية..." class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                    </div>
+                    <div>
+                        <label data-i18n="lblNotesEn" class="block text-xs font-bold text-slate-700 mb-1">Notes (English)</label>
+                        <textarea id="taskNotesEn" rows="2" dir="ltr" placeholder="Additional notes..." class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                    </div>
+                </div>
+
+                <div id="dateErrorMsg" data-i18n="dateError" class="hidden text-xs font-bold text-rose-600 bg-rose-50 p-2.5 rounded-xl border border-rose-200">
+                    تنبيه: تاريخ الاستحقاق يجب أن يكون مساوياً أو بعد تاريخ البدء.
+                </div>
+
+                <div class="pt-3 border-t border-slate-200 flex items-center justify-end gap-2.5">
+                    <button type="button" onclick="closeTaskModal()" data-i18n="btnCancel" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition">إلغاء</button>
+                    <button type="submit" data-i18n="btnSaveTask" class="px-5 py-2 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 transition">حفظ النشاط</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: ADMIN SETTINGS & WIP LIMIT & BILINGUAL PROJECT TITLE -->
+    <div id="settingsModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 p-5 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                    <i data-lucide="sliders-horizontal" class="w-5 h-5 text-indigo-600"></i>
+                    <span data-i18n="settingsModalTitle">إعدادات المشروع وحد استيعاب النقاط (الأدمن)</span>
+                </h3>
+                <button onclick="closeProjectSettingsModal()" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="space-y-3">
+                <div>
+                    <label data-i18n="lblProjTitleAr" class="block text-xs font-bold text-slate-700 mb-1">اسم المشروع (بالعربية):</label>
+                    <input id="inputTitleAr" type="text" class="w-full px-3.5 py-2 text-sm font-bold border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label data-i18n="lblProjTitleEn" class="block text-xs font-bold text-slate-700 mb-1">Project Title (English):</label>
+                    <input id="inputTitleEn" type="text" dir="ltr" class="w-full px-3.5 py-2 text-sm font-bold border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="grid grid-cols-2 gap-3 pt-1">
+                    <div>
+                        <label data-i18n="lblWipLimit" class="block text-xs font-bold text-slate-700 mb-1">الحد الأقصى لنقاط التنفيذ (WIP):</label>
+                        <input id="wipLimitInput" type="number" min="1" max="200" class="w-full px-3.5 py-2 text-sm font-bold border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label data-i18n="lblAdminPin" class="block text-xs font-bold text-slate-700 mb-1">رمز حماية الأدمن (PIN):</label>
+                        <input id="adminPinInput" type="text" maxlength="8" dir="ltr" class="w-full px-3.5 py-2 text-sm font-bold border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button onclick="closeProjectSettingsModal()" data-i18n="btnCancel" class="px-4 py-1.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100">إلغاء</button>
+                <button onclick="saveProjectSettings()" data-i18n="btnSaveSettings" class="px-4 py-1.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white">حفظ الإعدادات</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: ADMIN PIN UNLOCK MODAL (When switching from Management View to Admin Page) -->
+    <div id="pinModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl border border-slate-200 p-5 space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                    <i data-lucide="lock-keyhole" class="w-5 h-5 text-indigo-600"></i>
+                    <span data-i18n="pinModalTitle">الدخول إلى صفحة الأدمن</span>
+                </h3>
+                <button onclick="closePinModal()" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <p data-i18n="pinModalDesc" class="text-xs text-slate-600 leading-relaxed">
+                أدخل رمز المرور الخاص بالأدمن لتفعيل صلاحيات الإضافة والتعديل والسحب. (الرمز الافتراضي: <strong>1234</strong>)
+            </p>
+            <div>
+                <input id="unlockPinInput" type="password" dir="ltr" placeholder="PIN (1234)" onkeydown="if(event.key==='Enter') verifyAdminPin()" class="w-full px-3.5 py-2 text-center tracking-widest text-lg font-black border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <p id="pinErrorMsg" data-i18n="pinError" class="hidden text-xs font-bold text-rose-600 mt-1.5 text-center">رمز PIN غير صحيح! جرب 1234</p>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closePinModal()" data-i18n="btnCancel" class="px-4 py-1.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100">إلغاء</button>
+                <button onclick="verifyAdminPin()" data-i18n="btnUnlockAdmin" class="px-4 py-1.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white">دخول الأدمن</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: FREE WEB HOSTING & SHAREABLE LINKS GUIDE -->
+    <div id="shareHostingModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden">
+            <div class="px-5 py-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white flex items-center justify-between">
+                <h3 class="text-base sm:text-lg font-extrabold flex items-center gap-2">
+                    <i data-lucide="globe" class="w-5 h-5"></i>
+                    <span data-i18n="hostingModalTitle">مشاركة رابط الإدارة ودليل الرفع المجاني 100% على الويب</span>
+                </h3>
+                <button onclick="closeShareHostingModal()" class="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="p-5 space-y-5 max-h-[80vh] overflow-y-auto text-sm">
+                <!-- Direct Links Section -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                    <h4 class="font-extrabold text-slate-900 flex items-center gap-1.5">
+                        <i data-lucide="link" class="w-4 h-4 text-indigo-600"></i>
+                        <span data-i18n="shareLinksHeader">روابط الصفحات المباشرة (بعد رفع الملف):</span>
+                    </h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="bg-white p-3 rounded-xl border border-slate-200 flex flex-col justify-between gap-2">
+                            <div>
+                                <span class="text-xs font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200" data-i18n="mgmtLinkBadge">رابط صفحة الإدارة (للقراءة فقط)</span>
+                                <p class="text-xs text-slate-500 mt-1" data-i18n="mgmtLinkDesc">يفتح النظام مباشرة في وضع العرض التنفيذي للإدارة بدون أزرار تعديل أو حذف.</p>
+                            </div>
+                            <button onclick="copyRoleLink('management')" class="w-full py-1.5 px-3 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition">
+                                <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                                <span id="copyMgmtBtnText" data-i18n="btnCopyMgmtLink">نسخ رابط عرض الإدارة (?mode=view)</span>
+                            </button>
+                        </div>
+
+                        <div class="bg-white p-3 rounded-xl border border-slate-200 flex flex-col justify-between gap-2">
+                            <div>
+                                <span class="text-xs font-extrabold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200" data-i18n="adminLinkBadge">رابط صفحة الأدمن (تحكم كامل)</span>
+                                <p class="text-xs text-slate-500 mt-1" data-i18n="adminLinkDesc">يفتح النظام في وضع التحكم الكامل لإضافة وتعديل الأنشطة والنقاط.</p>
+                            </div>
+                            <button onclick="copyRoleLink('admin')" class="w-full py-1.5 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition">
+                                <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                                <span id="copyAdminBtnText" data-i18n="btnCopyAdminLink">نسخ رابط الأدمن (?mode=admin)</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Free Hosting Step-by-Step Guide -->
+                <div class="space-y-3">
+                    <h4 class="font-extrabold text-slate-900 flex items-center gap-1.5">
+                        <i data-lucide="Rocket" class="w-4 h-4 text-emerald-600"></i>
+                        <span data-i18n="freeHostHeader">كيف ترفع هذا النظام على الإنترنت مجاناً (بدون أي تكلفة) في دقيقة واحدة؟</span>
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs leading-relaxed">
+                        <div class="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/40">
+                            <div class="font-extrabold text-emerald-900 text-sm mb-1">1. موقع Netlify Drop (الأسرع - بدون برمجة)</div>
+                            <ol class="list-decimal list-inside space-y-1 text-slate-700">
+                                <li>قم بتحميل هذا الملف بصيغة <code>index.html</code> على جهازك.</li>
+                                <li>افتح موقع <strong>app.netlify.com/drop</strong> مجاناً.</li>
+                                <li>اسحب الملف وأفلته داخل الصفحة، وسيعطيك فوراً رابطاً مجانياً دائماً يعمل على الموبايل والكمبيوتر!</li>
+                            </ol>
+                        </div>
+                        <div class="p-3.5 rounded-xl border border-indigo-200 bg-indigo-50/40">
+                            <div class="font-extrabold text-indigo-900 text-sm mb-1">2. موقع GitHub Pages / Vercel (مجاني للأبد)</div>
+                            <ol class="list-decimal list-inside space-y-1 text-slate-700">
+                                <li>أنشئ مستودعاً (Repository) مجانياً على <strong>GitHub.com</strong>.</li>
+                                <li>ارفع الملف باسم <code>index.html</code> ثم فعّل <strong>GitHub Pages</strong> من الإعدادات.</li>
+                                <li>أرسل للإدارة الرابط مع إضافة <code>?mode=view</code> في نهايته.</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Backup / Restore JSON for Offline/Static Transfers -->
+                <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                    <div class="text-xs text-slate-600">
+                        <strong class="text-slate-800" data-i18n="backupTitle">نسخ احتياطي للبيانات (JSON):</strong>
+                        <span data-i18n="backupSub">احفظ نسخة من كافة الأنشطة أو استرجعها في أي وقت.</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="exportJSONBackup()" class="px-3 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 text-xs font-bold text-slate-700 flex items-center gap-1">
+                            <i data-lucide="download-cloud" class="w-3.5 h-3.5 text-indigo-600"></i>
+                            <span data-i18n="btnDownloadJson">حفظ ملف JSON</span>
+                        </button>
+                        <label class="px-3 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 text-xs font-bold text-slate-700 flex items-center gap-1 cursor-pointer">
+                            <i data-lucide="upload-cloud" class="w-3.5 h-3.5 text-emerald-600"></i>
+                            <span data-i18n="btnUploadJson">استيراد JSON</span>
+                            <input type="file" accept=".json" onchange="importJSONBackup(event)" class="hidden">
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 5: RESET CONFIRMATION MODAL -->
+    <div id="resetModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl border border-slate-200 p-5 space-y-4">
+            <div class="flex items-center gap-2.5 text-rose-600">
+                <div class="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center shrink-0">
+                    <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
+                </div>
+                <h3 data-i18n="resetModalTitle" class="text-base font-extrabold text-slate-900">إعادة ضبط البيانات التوضيحية؟</h3>
+            </div>
+            <p data-i18n="resetModalDesc" class="text-xs text-slate-600 leading-relaxed">
+                سيؤدي هذا الإجراء إلى استعادة الأنشطة الثمانية الافتراضية للمشروع (باللغتين العربية والإنجليزية). هل تود المتابعة؟
+            </p>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeResetModal()" data-i18n="btnCancel" class="px-4 py-1.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100">إلغاء</button>
+                <button onclick="confirmResetData()" data-i18n="btnConfirmReset" class="px-4 py-1.5 rounded-xl text-sm font-bold bg-rose-600 hover:bg-rose-700 text-white">نعم، استعادة الافتراضي</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase Cloud Sync + Bilingual Application Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Storage Keys (Fallback & Instant Cache) ---
+        const STORAGE_TASKS_KEY = 'weighted_kanban_bilingual_tasks_v2';
+        const STORAGE_META_KEY = 'weighted_kanban_bilingual_meta_v2';
+
+        // --- Complete Bilingual Dictionary (AR & EN) ---
+        const i18n = {
+            ar: {
+                navManagementPage: 'صفحة عرض الإدارة',
+                navAdminPage: 'صفحة الأدمن',
+                btnHostingAndShare: 'مشاركة ورفع مجاني',
+                systemTag: 'نظام النقاط الموزونة',
+                readOnlyBadge: 'وضع العرض التنفيذي للإدارة (للقراءة فقط)',
+                tabKanban: 'لوحة كانبان',
+                tabTimeline: 'الجدول الزمني',
+                tabExecutive: 'تقرير الإدارة',
+                wipLimitLabel: 'حد التنفيذ:',
+                ptShort: 'ن',
+                pointsWord: 'نقطة',
+                btnAddActivity: 'نشاط جديد',
+                btnExportCSV: 'تصدير Excel/CSV',
+                weightedSubtitle: 'الإنجاز الفعلي الموزون بالنقاط',
+                weightedTitle: 'تقدم نقاط المشروع',
+                completedPtsUnit: 'نقطة مكتملة',
+                statusDone: 'مكتمل',
+                statusReviewShort: 'مراجعة',
+                statusProgressShort: 'تنفيذ',
+                statusBacklogShort: 'انتظار',
+                kpiTotalVolume: 'إجمالي حجم المشروع',
+                acrossTasksPrefix: 'موزعة على',
+                activitiesWord: 'أنشطة',
+                activitySingular: 'نشاط',
+                kpiWipTitle: 'ضغط قيد التنفيذ (WIP)',
+                kpiOverdueTitle: 'أنشطة متأخرة',
+                totalWord: 'بإجمالي',
+                overduePtsSuffix: 'نقطة متأخرة',
+                kpiDueSoonTitle: 'قريبة الاستحقاق (3 أيام)',
+                urgentPtsSuffix: 'نقطة عاجلة',
+                searchPlaceholder: 'ابحث عن نشاط أو مسؤول...',
+                filterAllCategories: 'جميع الفئات',
+                catFrontend: 'تطوير الواجهات',
+                catInfra: 'البنية التحتية',
+                catSecurity: 'أمن المعلومات',
+                catDatabase: 'قواعد البيانات',
+                catManagement: 'إدارة وتحليل',
+                catQA: 'اختبار وجودة',
+                filterAllDeadlines: 'جميع المواعيد النهائية',
+                filterOverdue: '🔴 متأخر عن الموعد',
+                filterSoon: '🟡 قريب الاستحقاق (خلال 3 أيام)',
+                filterOnTrack: '🟢 في المسار الصحيح',
+                filterAllAssignees: 'جميع المسؤولين',
+                legendAlertsLabel: 'دليل التنبيهات:',
+                badgeOverdue: 'متأخر',
+                badgeDueSoon: 'قريب الاستحقاق',
+                badgeOnTrack: 'في الموعد',
+                colBacklog: 'قائمة الانتظار',
+                colInProgress: 'قيد التنفيذ',
+                colReview: 'قيد المراجعة',
+                colDone: 'مكتمل',
+                wipOverloadBanner: 'تجاوز حد النقاط المسموح به في نفس الوقت!',
+                wipSafe: 'ضمن الحد الآمن للتنفيذ',
+                wipNear: 'قريب من الحد الأقصى',
+                wipExceededBy: 'تجاوز الحد بـ',
+                emptyColumn: 'لا توجد أنشطة في هذا العمود',
+                timelineHeaderTitle: 'الجدول الزمني للأنشطة ونقاط المشروع (Project Points Timeline)',
+                timelineHeaderSub: 'يعرض امتداد كل نشاط من تاريخ البدء إلى تاريخ الاستحقاق مع وزن النقاط وحالة الموعد النهائي',
+                sortByLabel: 'ترتيب حسب:',
+                sortDueDate: 'تاريخ الاستحقاق (الأقرب أولاً)',
+                sortStartDate: 'تاريخ البدء',
+                sortPointsDesc: 'النقاط (الأعلى وزناً أولاً)',
+                thActivityCat: 'النشاط والفئة',
+                thWeightPts: 'الوزن (النقاط)',
+                thAssignee: 'المسؤول',
+                thStatus: 'الحالة',
+                thPeriod: 'فترة التنفيذ',
+                thGanttBar: 'المخطط الزمني وحالة الموعد',
+                thAction: 'إجراء',
+                execCategoryTitle: 'توزيع النقاط ونسب الإنجاز حسب الفئة',
+                execCategorySub: 'يوضح وزن كل مرحلة من المشروع وما تم إنجازه منها بالنقاط',
+                execTeamTitle: 'توزيع النقاط ومعدل الإنجاز حسب المسؤول',
+                execTeamSub: 'يتتبع عبء العمل (النقاط المسندة والمكتملة وقيد التنفيذ) لكل عضو',
+                modalAddTitle: 'إضافة نشاط جديد (عربي / إنجليزي)',
+                modalEditTitle: 'تعديل بيانات النشاط',
+                lblTitleAr: 'اسم النشاط (بالعربية) *',
+                lblTitleEn: 'Activity Title (English)',
+                lblCategory: 'الفئة / المرحلة *',
+                lblPoints: 'قيمة النقاط (وزن الجهد) *',
+                lblStartDate: 'تاريخ البدء *',
+                lblDueDate: 'تاريخ الاستحقاق (الموعد النهائي) *',
+                lblAssigneeAr: 'المسؤول (عربي) *',
+                lblAssigneeEn: 'Assignee (EN)',
+                lblStatus: 'الحالة / العمود *',
+                lblNotesAr: 'ملاحظات (عربي)',
+                lblNotesEn: 'Notes (English)',
+                dateError: 'تنبيه: تاريخ الاستحقاق يجب أن يكون مساوياً أو بعد تاريخ البدء.',
+                btnCancel: 'إلغاء',
+                btnSaveTask: 'حفظ النشاط',
+                settingsModalTitle: 'إعدادات المشروع وحد استيعاب النقاط (الأدمن)',
+                lblProjTitleAr: 'اسم المشروع (بالعربية):',
+                lblProjTitleEn: 'Project Title (English):',
+                lblWipLimit: 'الحد الأقصى لنقاط التنفيذ (WIP):',
+                lblAdminPin: 'رمز حماية الأدمن (PIN):',
+                btnSaveSettings: 'حفظ الإعدادات',
+                pinModalTitle: 'الدخول إلى صفحة الأدمن',
+                pinModalDesc: 'أدخل رمز المرور الخاص بالأدمن لتفعيل صلاحيات الإضافة والتعديل والسحب. (الرمز الافتراضي: 1234)',
+                pinError: 'رمز PIN غير صحيح! الرمز الافتراضي 1234',
+                btnUnlockAdmin: 'دخول الأدمن',
+                hostingModalTitle: 'مشاركة رابط الإدارة ودليل الرفع المجاني 100% على الويب',
+                shareLinksHeader: 'روابط الصفحات المباشرة (بعد رفع الملف):',
+                mgmtLinkBadge: 'رابط صفحة الإدارة (للقراءة فقط)',
+                mgmtLinkDesc: 'يفتح النظام مباشرة في وضع العرض التنفيذي للإدارة بدون أزرار تعديل أو حذف.',
+                btnCopyMgmtLink: 'نسخ رابط عرض الإدارة (?mode=view)',
+                adminLinkBadge: 'رابط صفحة الأدمن (تحكم كامل)',
+                adminLinkDesc: 'يفتح النظام في وضع التحكم الكامل لإضافة وتعديل الأنشطة والنقاط.',
+                btnCopyAdminLink: 'نسخ رابط الأدمن (?mode=admin)',
+                freeHostHeader: 'كيف ترفع هذا النظام على الإنترنت مجاناً (بدون أي تكلفة) في دقيقة واحدة؟',
+                backupTitle: 'نسخ احتياطي للبيانات (JSON):',
+                backupSub: 'احفظ نسخة من كافة الأنشطة أو استرجعها في أي وقت.',
+                btnDownloadJson: 'حفظ ملف JSON',
+                btnUploadJson: 'استيراد JSON',
+                resetModalTitle: 'إعادة ضبط البيانات التوضيحية؟',
+                resetModalDesc: 'سيؤدي هذا الإجراء إلى استعادة الأنشطة الثمانية الافتراضية للمشروع (باللغتين العربية والإنجليزية). هل تود المتابعة؟',
+                btnConfirmReset: 'نعم، استعادة الافتراضي',
+                roleAdminActive: 'صفحة الأدمن (تحكم كامل)',
+                roleMgmtActive: 'صفحة عرض الإدارة (للقراءة فقط)',
+                cloudSynced: 'متصل سحابياً (تحديث فوري)',
+                localSynced: 'محفوظ محلياً وجاهز للعمل',
+                fromWord: 'من:',
+                toWord: 'إلى:',
+                workDays: 'أيام عمل',
+                completedLabel: 'مكتمل ✓',
+                dueTodayLabel: 'يستحق اليوم!',
+                copiedText: 'تم النسخ بنجاح ✓'
+            },
+            en: {
+                navManagementPage: 'Management View',
+                navAdminPage: 'Admin Panel',
+                btnHostingAndShare: 'Share & Free Hosting',
+                systemTag: 'Weighted Points System',
+                readOnlyBadge: 'Executive Management View (Read-Only)',
+                tabKanban: 'Kanban Board',
+                tabTimeline: 'Project Timeline',
+                tabExecutive: 'Executive Summary',
+                wipLimitLabel: 'WIP Limit:',
+                ptShort: 'pts',
+                pointsWord: 'Points',
+                btnAddActivity: 'New Activity',
+                btnExportCSV: 'Export Excel/CSV',
+                weightedSubtitle: 'Weighted Points Completion',
+                weightedTitle: 'Project Points Progress',
+                completedPtsUnit: 'Completed Points',
+                statusDone: 'Done',
+                statusReviewShort: 'Review',
+                statusProgressShort: 'In Progress',
+                statusBacklogShort: 'Backlog',
+                kpiTotalVolume: 'Total Project Scope',
+                acrossTasksPrefix: 'Across',
+                activitiesWord: 'activities',
+                activitySingular: 'activity',
+                kpiWipTitle: 'Active WIP Load',
+                kpiOverdueTitle: 'Overdue Activities',
+                totalWord: 'Totaling',
+                overduePtsSuffix: 'overdue pts',
+                kpiDueSoonTitle: 'Due Soon (3 Days)',
+                urgentPtsSuffix: 'urgent pts',
+                searchPlaceholder: 'Search activity or assignee...',
+                filterAllCategories: 'All Categories',
+                catFrontend: 'Frontend Dev',
+                catInfra: 'Infrastructure',
+                catSecurity: 'Information Security',
+                catDatabase: 'Databases',
+                catManagement: 'Management & Analysis',
+                catQA: 'QA & Testing',
+                filterAllDeadlines: 'All Deadlines',
+                filterOverdue: '🔴 Overdue',
+                filterSoon: '🟡 Due Soon (Within 3 Days)',
+                filterOnTrack: '🟢 On Track',
+                filterAllAssignees: 'All Assignees',
+                legendAlertsLabel: 'Alerts Guide:',
+                badgeOverdue: 'Overdue',
+                badgeDueSoon: 'Due Soon',
+                badgeOnTrack: 'On Track',
+                colBacklog: 'Backlog',
+                colInProgress: 'In Progress',
+                colReview: 'In Review',
+                colDone: 'Completed',
+                wipOverloadBanner: 'Active WIP points limit exceeded!',
+                wipSafe: 'Within safe WIP limit',
+                wipNear: 'Approaching WIP limit',
+                wipExceededBy: 'Exceeded limit by',
+                emptyColumn: 'No activities in this column',
+                timelineHeaderTitle: 'Project Activities & Points Timeline (Gantt Roadmap)',
+                timelineHeaderSub: 'Displays each activity span from start date to due date with point weights and deadline status',
+                sortByLabel: 'Sort by:',
+                sortDueDate: 'Due Date (Earliest First)',
+                sortStartDate: 'Start Date',
+                sortPointsDesc: 'Points (Highest Weight First)',
+                thActivityCat: 'Activity & Category',
+                thWeightPts: 'Weight (Pts)',
+                thAssignee: 'Assignee',
+                thStatus: 'Status',
+                thPeriod: 'Execution Period',
+                thGanttBar: 'Timeline Roadmap & Deadline Status',
+                thAction: 'Actions',
+                execCategoryTitle: 'Points & Completion Breakdown by Category',
+                execCategorySub: 'Shows the point weight of each project phase and completed points',
+                execTeamTitle: 'Workload & Points Breakdown by Assignee',
+                execTeamSub: 'Tracks assigned, completed, and active in-progress points per team member',
+                modalAddTitle: 'Add New Activity (Bilingual AR/EN)',
+                modalEditTitle: 'Edit Activity Details',
+                lblTitleAr: 'Activity Title (Arabic) *',
+                lblTitleEn: 'Activity Title (English)',
+                lblCategory: 'Category / Phase *',
+                lblPoints: 'Point Value (Effort Weight) *',
+                lblStartDate: 'Start Date *',
+                lblDueDate: 'Due Date (Deadline) *',
+                lblAssigneeAr: 'Assignee (Arabic) *',
+                lblAssigneeEn: 'Assignee (English)',
+                lblStatus: 'Column / Status *',
+                lblNotesAr: 'Notes (Arabic)',
+                lblNotesEn: 'Notes (English)',
+                dateError: 'Warning: Due date must be on or after the Start date.',
+                btnCancel: 'Cancel',
+                btnSaveTask: 'Save Activity',
+                settingsModalTitle: 'Project Settings & WIP Limit (Admin)',
+                lblProjTitleAr: 'Project Title (Arabic):',
+                lblProjTitleEn: 'Project Title (English):',
+                lblWipLimit: 'Max Active WIP Points Limit:',
+                lblAdminPin: 'Admin Protection PIN:',
+                btnSaveSettings: 'Save Settings',
+                pinModalTitle: 'Unlock Admin Panel',
+                pinModalDesc: 'Enter the Admin PIN to enable adding, editing, and dragging activities. (Default PIN: 1234)',
+                pinError: 'Incorrect PIN! Default is 1234',
+                btnUnlockAdmin: 'Unlock Admin',
+                hostingModalTitle: 'Share Management Link & 100% Free Web Hosting Guide',
+                shareLinksHeader: 'Direct Role Links (After Hosting):',
+                mgmtLinkBadge: 'Management View Link (Read-Only)',
+                mgmtLinkDesc: 'Opens directly into the executive Read-Only dashboard without edit/delete controls.',
+                btnCopyMgmtLink: 'Copy Management Link (?mode=view)',
+                adminLinkBadge: 'Admin Control Link (Full Access)',
+                adminLinkDesc: 'Opens the full control mode to manage activities and points.',
+                btnCopyAdminLink: 'Copy Admin Link (?mode=admin)',
+                freeHostHeader: 'How to Host This System Online 100% Free in 1 Minute:',
+                backupTitle: 'JSON Data Backup:',
+                backupSub: 'Export all activities to a JSON file or restore them anytime.',
+                btnDownloadJson: 'Export JSON',
+                btnUploadJson: 'Import JSON',
+                resetModalTitle: 'Reset Default Project Data?',
+                resetModalDesc: 'This will restore the 8 default bilingual project activities. Do you want to proceed?',
+                btnConfirmReset: 'Yes, Restore Defaults',
+                roleAdminActive: 'Admin Mode (Full Control)',
+                roleMgmtActive: 'Management View (Read-Only)',
+                cloudSynced: 'Cloud Synced (Live Real-time)',
+                localSynced: 'Saved Locally & Ready',
+                fromWord: 'From:',
+                toWord: 'To:',
+                workDays: 'working days',
+                completedLabel: 'Completed ✓',
+                dueTodayLabel: 'Due Today!',
+                copiedText: 'Copied ✓'
+            }
+        };
+
+        // --- Helper for Relative Dates ---
+        function getRelativeDate(offsetDays) {
+            const d = new Date();
+            d.setHours(0, 0, 0, 0);
+            d.setDate(d.getDate() + offsetDays);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // --- Pre-populated 8 Bilingual Tasks from User's Attached File ---
+        function getDefaultTasks() {
+            return [
+                {
+                    id: 't-101',
+                    titleAr: 'إعداد البنية السحابية وخوادم الإنتاج',
+                    titleEn: 'Cloud Infrastructure & Production Servers Setup',
+                    category: 'infra',
+                    points: 8,
+                    startDate: getRelativeDate(-10),
+                    dueDate: getRelativeDate(-4),
+                    assigneeAr: 'م. كريم عادل',
+                    assigneeEn: 'Eng. Karim Adel',
+                    status: 'done',
+                    notesAr: 'تم رفع الخوادم وضبط جدار الحماية بنجاح',
+                    notesEn: 'Servers deployed and firewall configured successfully'
+                },
+                {
+                    id: 't-102',
+                    titleAr: 'تصميم هيكل قاعدة البيانات الموحدة',
+                    titleEn: 'Unified Database Schema Design',
+                    category: 'database',
+                    points: 5,
+                    startDate: getRelativeDate(-8),
+                    dueDate: getRelativeDate(-3),
+                    assigneeAr: 'م. سارة محمود',
+                    assigneeEn: 'Eng. Sara Mahmoud',
+                    status: 'done',
+                    notesAr: 'مراجعة الجداول والعلاقات الأساسية',
+                    notesEn: 'Core tables and relationships reviewed'
+                },
+                {
+                    id: 't-103',
+                    titleAr: 'تطوير نظام تسجيل الدخول والصلاحيات (JWT)',
+                    titleEn: 'Auth & RBAC System Development (JWT)',
+                    category: 'security',
+                    points: 8,
+                    startDate: getRelativeDate(-5),
+                    dueDate: getRelativeDate(-1), // Overdue
+                    assigneeAr: 'م. أحمد طارق',
+                    assigneeEn: 'Eng. Ahmed Tarek',
+                    status: 'inprogress',
+                    notesAr: 'يتبقى ربط التحقق الثنائي 2FA',
+                    notesEn: 'Pending 2FA integration'
+                },
+                {
+                    id: 't-104',
+                    titleAr: 'بناء لوحة المؤشرات والتقارير التفاعلية',
+                    titleEn: 'Interactive KPI & Reporting Dashboard',
+                    category: 'frontend',
+                    points: 5,
+                    startDate: getRelativeDate(-3),
+                    dueDate: getRelativeDate(2), // Due soon
+                    assigneeAr: 'م. منى الشاذلي',
+                    assigneeEn: 'Eng. Mona El-Shazly',
+                    status: 'inprogress',
+                    notesAr: 'ربط الرسوم البيانية مع نقاط المشروع',
+                    notesEn: 'Binding charts with project points'
+                },
+                {
+                    id: 't-105',
+                    titleAr: 'مراجعة ثغرات أمنية واختبار الاختراق الأولي',
+                    titleEn: 'Vulnerability Audit & Initial Penetration Test',
+                    category: 'security',
+                    points: 3,
+                    startDate: getRelativeDate(-4),
+                    dueDate: getRelativeDate(1), // Due soon
+                    assigneeAr: 'م. كريم عادل',
+                    assigneeEn: 'Eng. Karim Adel',
+                    status: 'review',
+                    notesAr: 'في انتظار اعتماد تقرير الفحص الأمني',
+                    notesEn: 'Awaiting security scan report sign-off'
+                },
+                {
+                    id: 't-106',
+                    titleAr: 'تحسين سرعة استجابة الاستعلامات (Caching)',
+                    titleEn: 'Query Response Time Optimization (Caching)',
+                    category: 'database',
+                    points: 3,
+                    startDate: getRelativeDate(-2),
+                    dueDate: getRelativeDate(5), // On Track
+                    assigneeAr: 'م. سارة محمود',
+                    assigneeEn: 'Eng. Sara Mahmoud',
+                    status: 'inprogress',
+                    notesAr: 'استخدام Redis لتخزين الجلسات',
+                    notesEn: 'Using Redis for session caching'
+                },
+                {
+                    id: 't-107',
+                    titleAr: 'توثيق واجهات البرمجة (API Documentation)',
+                    titleEn: 'API Documentation (Swagger/OpenAPI)',
+                    category: 'management',
+                    points: 2,
+                    startDate: getRelativeDate(1),
+                    dueDate: getRelativeDate(7),
+                    assigneeAr: 'م. أحمد طارق',
+                    assigneeEn: 'Eng. Ahmed Tarek',
+                    status: 'backlog',
+                    notesAr: 'تجهيز ملفات Swagger للفريق',
+                    notesEn: 'Preparing Swagger specs for the team'
+                },
+                {
+                    id: 't-108',
+                    titleAr: 'اختبارات الأداء والضغط الشامل قبل الإطلاق',
+                    titleEn: 'Comprehensive Pre-Launch Load & Stress Testing',
+                    category: 'qa',
+                    points: 13,
+                    startDate: getRelativeDate(3),
+                    dueDate: getRelativeDate(12),
+                    assigneeAr: 'م. منى الشاذلي',
+                    assigneeEn: 'Eng. Mona El-Shazly',
+                    status: 'backlog',
+                    notesAr: 'محاكاة 10,000 مستخدم متزامن',
+                    notesEn: 'Simulating 10,000 concurrent users'
+                }
+            ];
+        }
+
+        // --- Application State ---
+        let tasks = [];
+        let projectMeta = {
+            titleAr: 'مشروع تطوير المنصة الرقمية 2026',
+            titleEn: 'Digital Platform Development Project 2026',
+            wipLimit: 15,
+            adminPin: '1234',
+            lang: 'ar',
+            role: 'admin', // 'admin' or 'management'
+            currentView: 'kanban'
+        };
+        let draggedTaskId = null;
+
+        // --- Firebase State ---
+        let db = null;
+        let auth = null;
+        let currentUser = null;
+        let isCloudActive = false;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'weighted-kanban-bilingual-app';
+
+        // --- Category Styling & Translation Lookup ---
+        const categoryStyles = {
+            'frontend': 'bg-violet-50 text-violet-700 border-violet-200',
+            'infra': 'bg-sky-50 text-sky-700 border-sky-200',
+            'security': 'bg-rose-50 text-rose-700 border-rose-200',
+            'database': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+            'management': 'bg-amber-50 text-amber-700 border-amber-200',
+            'qa': 'bg-indigo-50 text-indigo-700 border-indigo-200'
+        };
+
+        function getCategoryName(catCode) {
+            const dict = i18n[projectMeta.lang];
+            const map = {
+                'frontend': dict.catFrontend,
+                'infra': dict.catInfra,
+                'security': dict.catSecurity,
+                'database': dict.catDatabase,
+                'management': dict.catManagement,
+                'qa': dict.catQA
+            };
+            return map[catCode] || catCode;
+        }
+
+        function getStatusInfo(statusCode) {
+            const dict = i18n[projectMeta.lang];
+            const map = {
+                'backlog': { name: dict.colBacklog, badge: 'bg-slate-100 text-slate-700 border-slate-300' },
+                'inprogress': { name: dict.colInProgress, badge: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+                'review': { name: dict.colReview, badge: 'bg-amber-50 text-amber-700 border-amber-200' },
+                'done': { name: dict.colDone, badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' }
+            };
+            return map[statusCode] || map['backlog'];
+        }
+
+        // Helpers to read localized task fields seamlessly
+        function getTaskTitle(t) {
+            if (projectMeta.lang === 'en') return t.titleEn || t.titleAr || t.title || '';
+            return t.titleAr || t.title || t.titleEn || '';
+        }
+        function getTaskAssignee(t) {
+            if (projectMeta.lang === 'en') return t.assigneeEn || t.assigneeAr || t.assignee || '';
+            return t.assigneeAr || t.assignee || t.assigneeEn || '';
+        }
+        function getTaskNotes(t) {
+            if (projectMeta.lang === 'en') return t.notesEn || t.notesAr || t.notes || '';
+            return t.notesAr || t.notes || t.notesEn || '';
+        }
+
+        // --- Load Local Cache & URL Parameters ---
+        function initLocalAndUrlState() {
+            try {
+                const savedTasks = localStorage.getItem(STORAGE_TASKS_KEY);
+                const savedMeta = localStorage.getItem(STORAGE_META_KEY);
+                if (savedTasks) {
+                    tasks = JSON.parse(savedTasks);
+                } else {
+                    tasks = getDefaultTasks();
+                }
+                if (savedMeta) {
+                    projectMeta = { ...projectMeta, ...JSON.parse(savedMeta) };
+                }
+            } catch (e) {
+                tasks = getDefaultTasks();
+            }
+
+            // Check URL query parameters for Management Read-Only mode or Language
+            const params = new URLSearchParams(window.location.search);
+            const modeParam = params.get('mode') || params.get('role');
+            const langParam = params.get('lang');
+
+            if (modeParam === 'view' || modeParam === 'management' || modeParam === 'readonly') {
+                projectMeta.role = 'management';
+            } else if (modeParam === 'admin') {
+                projectMeta.role = 'admin';
+            }
+
+            if (langParam === 'en' || langParam === 'ar') {
+                projectMeta.lang = langParam;
+            }
+        }
+
+        // --- Initialize Cloud Sync (Firestore) with Fallback ---
+        async function initCloudSync() {
+            try {
+                if (typeof __firebase_config === 'undefined' || !__firebase_config) {
+                    updateSyncIndicator(false);
+                    return;
+                }
+                const firebaseConfig = JSON.parse(__firebase_config);
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // RULE 3: Authenticate first before any Firestore operations
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    const cred = await signInWithCustomToken(auth, __initial_auth_token);
+                    currentUser = cred.user;
+                } else {
+                    const cred = await signInAnonymously(auth);
+                    currentUser = cred.user;
+                }
+
+                if (!currentUser) return;
+
+                // RULE 1: Strict public path
+                const boardDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'kanbanBoards', 'mainBoard');
+
+                onSnapshot(boardDocRef, (snapshot) => {
+                    isCloudActive = true;
+                    updateSyncIndicator(true);
+                    if (snapshot.exists()) {
+                        const data = snapshot.data();
+                        if (data.tasksJson) {
+                            tasks = JSON.parse(data.tasksJson);
+                        }
+                        if (data.titleAr) projectMeta.titleAr = data.titleAr;
+                        if (data.titleEn) projectMeta.titleEn = data.titleEn;
+                        if (data.wipLimit) projectMeta.wipLimit = Number(data.wipLimit);
+                        if (data.adminPin) projectMeta.adminPin = data.adminPin;
+
+                        saveLocalOnly();
+                        populateAssigneeFilter();
+                        renderAll();
+                    } else {
+                        // Seed initial cloud document
+                        pushStateToCloud();
+                    }
+                }, (err) => {
+                    console.warn('Firestore snapshot fallback to local:', err);
+                    updateSyncIndicator(false);
+                });
+            } catch (err) {
+                console.warn('Running in standalone local mode:', err);
+                updateSyncIndicator(false);
+            }
+        }
+
+        function updateSyncIndicator(cloudConnected) {
+            const dot = document.getElementById('cloudSyncDot');
+            const txt = document.getElementById('cloudSyncText');
+            const dict = i18n[projectMeta.lang];
+            if (cloudConnected) {
+                dot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+                txt.textContent = dict.cloudSynced;
+            } else {
+                dot.className = 'w-2 h-2 rounded-full bg-sky-400';
+                txt.textContent = dict.localSynced;
+            }
+        }
+
+        function saveLocalOnly() {
+            try {
+                localStorage.setItem(STORAGE_TASKS_KEY, JSON.stringify(tasks));
+                localStorage.setItem(STORAGE_META_KEY, JSON.stringify(projectMeta));
+            } catch (e) {}
+        }
+
+        async function saveAllState() {
+            saveLocalOnly();
+            await pushStateToCloud();
+        }
+
+        async function pushStateToCloud() {
+            if (!db || !currentUser) return;
+            try {
+                const boardDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'kanbanBoards', 'mainBoard');
+                await setDoc(boardDocRef, {
+                    tasksJson: JSON.stringify(tasks),
+                    titleAr: projectMeta.titleAr,
+                    titleEn: projectMeta.titleEn,
+                    wipLimit: projectMeta.wipLimit,
+                    adminPin: projectMeta.adminPin,
+                    updatedAt: Date.now()
+                });
+            } catch (e) {
+                console.warn('Cloud push error:', e);
+            }
+        }
+
+        // --- Language & RTL/LTR Switching ---
+        function applyLanguageUI() {
+            const lang = projectMeta.lang;
+            const dict = i18n[lang];
+            const htmlRoot = document.getElementById('htmlRoot');
+
+            htmlRoot.lang = lang;
+            htmlRoot.dir = lang === 'ar' ? 'rtl' : 'ltr';
+
+            document.getElementById('langToggleLabel').textContent = lang === 'ar' ? 'English (EN)' : 'العربية (AR)';
+            document.getElementById('searchInput').placeholder = dict.searchPlaceholder;
+
+            // Translate all [data-i18n] elements
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (dict[key]) {
+                    el.textContent = dict[key];
+                }
+            });
+
+            // Project Title
+            document.getElementById('projectTitleText').textContent =
+                lang === 'en' ? projectMeta.titleEn : projectMeta.titleAr;
+
+            // Current Date formatted by locale
+            const today = new Date();
+            const locale = lang === 'ar' ? 'ar-EG' : 'en-US';
+            document.getElementById('currentDateDisplay').textContent =
+                today.toLocaleDateString(locale, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
+
+            updateSyncIndicator(isCloudActive);
+            applyRoleModeUI();
+            populateAssigneeFilter();
+            renderAll();
+        }
+
+        window.toggleLanguage = function() {
+            projectMeta.lang = projectMeta.lang === 'ar' ? 'en' : 'ar';
+            saveLocalOnly();
+            applyLanguageUI();
+        };
+
+        // --- Role Mode Switching (Management Read-Only Page vs Admin Page) ---
+        function applyRoleModeUI() {
+            const isMgmt = projectMeta.role === 'management';
+            const dict = i18n[projectMeta.lang];
+
+            const banner = document.getElementById('roleBanner');
+            const roleBadge = document.getElementById('roleStatusBadge');
+            const roleText = document.getElementById('roleStatusText');
+            const btnMgmt = document.getElementById('btnRoleManagement');
+            const btnAdmin = document.getElementById('btnRoleAdmin');
+            const adminHeaderControls = document.getElementById('adminHeaderControls');
+            const readOnlyPill = document.getElementById('readOnlyPill');
+            const editTitleIcon = document.getElementById('editTitleIcon');
+            const thActionCol = document.getElementById('thActionCol');
+
+            if (isMgmt) {
+                banner.className = 'bg-slate-900 text-white text-xs py-2 px-4 sm:px-6 border-b border-slate-800';
+                roleBadge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-400/30';
+                roleText.textContent = dict.roleMgmtActive;
+
+                btnMgmt.className = 'flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold transition bg-amber-500 text-slate-950 shadow-xs';
+                btnAdmin.className = 'flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold transition text-slate-300 hover:text-white';
+
+                adminHeaderControls.classList.add('hidden');
+                readOnlyPill.classList.remove('hidden');
+                readOnlyPill.classList.add('inline-flex');
+                editTitleIcon.classList.add('hidden');
+                if (thActionCol) thActionCol.classList.add('hidden');
+
+                document.querySelectorAll('.admin-only-btn').forEach(b => b.classList.add('hidden'));
+            } else {
+                roleBadge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-400/30';
+                roleText.textContent = dict.roleAdminActive;
+
+                btnAdmin.className = 'flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold transition bg-indigo-600 text-white shadow-xs';
+                btnMgmt.className = 'flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold transition text-slate-300 hover:text-white';
+
+                adminHeaderControls.classList.remove('hidden');
+                readOnlyPill.classList.add('hidden');
+                readOnlyPill.classList.remove('inline-flex');
+                editTitleIcon.classList.remove('hidden');
+                if (thActionCol) thActionCol.classList.remove('hidden');
+
+                document.querySelectorAll('.admin-only-btn').forEach(b => b.classList.remove('hidden'));
+            }
+        }
+
+        window.requestRoleSwitch = function(targetRole) {
+            if (targetRole === 'management') {
+                projectMeta.role = 'management';
+                saveLocalOnly();
+                applyRoleModeUI();
+                renderAll();
+            } else {
+                if (projectMeta.role === 'admin') return;
+                // Open PIN unlock modal
+                document.getElementById('unlockPinInput').value = '';
+                document.getElementById('pinErrorMsg').classList.add('hidden');
+                const modal = document.getElementById('pinModal');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                setTimeout(() => document.getElementById('unlockPinInput').focus(), 80);
+            }
+        };
+
+        window.closePinModal = function() {
+            const modal = document.getElementById('pinModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        };
+
+        window.verifyAdminPin = function() {
+            const entered = document.getElementById('unlockPinInput').value.trim();
+            if (entered === (projectMeta.adminPin || '1234')) {
+                projectMeta.role = 'admin';
+                saveLocalOnly();
+                closePinModal();
+                applyRoleModeUI();
+                renderAll();
+            } else {
+                document.getElementById('pinErrorMsg').classList.remove('hidden');
+            }
+        };
+
+        // --- Deadline Status Calculation ---
+        function getDeadlineInfo(task) {
+            const dict = i18n[projectMeta.lang];
+            if (task.status === 'done') {
+                return {
+                    code: 'done',
+                    label: dict.completedLabel,
+                    daysDiff: 0,
+                    badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                    icon: 'check-circle-2'
+                };
+            }
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const due = new Date(task.dueDate + 'T00:00:00');
+            const diffTime = due.getTime() - today.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays < 0) {
+                const late = Math.abs(diffDays);
+                const lbl = projectMeta.lang === 'ar'
+                    ? `متأخر منذ ${late} ${late === 1 ? 'يوم' : 'أيام'}`
+                    : `Overdue by ${late} ${late === 1 ? 'day' : 'days'}`;
+                return {
+                    code: 'overdue',
+                    label: lbl,
+                    daysDiff: diffDays,
+                    badgeClass: 'bg-rose-50 text-rose-700 border-rose-200 font-bold',
+                    icon: 'flame'
+                };
+            } else if (diffDays === 0) {
+                return {
+                    code: 'soon',
+                    label: dict.dueTodayLabel,
+                    daysDiff: 0,
+                    badgeClass: 'bg-amber-100 text-amber-800 border-amber-300 font-bold',
+                    icon: 'bell-ring'
+                };
+            } else if (diffDays <= 3) {
+                const lbl = projectMeta.lang === 'ar'
+                    ? `باقي ${diffDays} ${diffDays === 1 ? 'يوم' : 'أيام'}`
+                    : `${diffDays} ${diffDays === 1 ? 'day' : 'days'} left`;
+                return {
+                    code: 'soon',
+                    label: lbl,
+                    daysDiff: diffDays,
+                    badgeClass: 'bg-amber-50 text-amber-700 border-amber-200 font-bold',
+                    icon: 'clock'
+                };
+            } else {
+                const lbl = projectMeta.lang === 'ar'
+                    ? `باقي ${diffDays} يوم`
+                    : `${diffDays} days left`;
+                return {
+                    code: 'ontrack',
+                    label: lbl,
+                    daysDiff: diffDays,
+                    badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                    icon: 'calendar-check'
+                };
+            }
+        }
+
+        // --- Populate Assignee Filter ---
+        function populateAssigneeFilter() {
+            const select = document.getElementById('filterAssignee');
+            const currentVal = select.value;
+            const dict = i18n[projectMeta.lang];
+            const assignees = [...new Set(tasks.map(t => getTaskAssignee(t).trim()).filter(Boolean))];
+
+            select.innerHTML = `<option value="all">${dict.filterAllAssignees}</option>`;
+            assignees.forEach(person => {
+                const opt = document.createElement('option');
+                opt.value = person;
+                opt.textContent = person;
+                select.appendChild(opt);
+            });
+            if (assignees.includes(currentVal)) {
+                select.value = currentVal;
+            }
+        }
+
+        // --- Filter Tasks ---
+        function getFilteredTasks() {
+            const query = document.getElementById('searchInput').value.trim().toLowerCase();
+            const category = document.getElementById('filterCategory').value;
+            const deadlineFilter = document.getElementById('filterDeadline').value;
+            const assignee = document.getElementById('filterAssignee').value;
+
+            return tasks.filter(task => {
+                const title = getTaskTitle(task).toLowerCase();
+                const person = getTaskAssignee(task).toLowerCase();
+                const notes = getTaskNotes(task).toLowerCase();
+
+                const matchesSearch = !query || title.includes(query) || person.includes(query) || notes.includes(query);
+                const matchesCategory = category === 'all' || task.category === category;
+                const matchesAssignee = assignee === 'all' || getTaskAssignee(task).trim() === assignee;
+
+                let matchesDeadline = true;
+                if (deadlineFilter !== 'all') {
+                    const dl = getDeadlineInfo(task);
+                    matchesDeadline = dl.code === deadlineFilter;
+                }
+
+                return matchesSearch && matchesCategory && matchesAssignee && matchesDeadline;
+            });
+        }
+
+        // --- Master Render ---
+        window.renderAll = function() {
+            updateExecutiveMetrics();
+            renderKanbanBoard();
+            renderTimeline();
+            renderExecutiveSummary();
+            lucide.createIcons();
+        };
+
+        // --- Update Top KPIs & Weighted Progress ---
+        function updateExecutiveMetrics() {
+            const dict = i18n[projectMeta.lang];
+            let totalPts = 0, donePts = 0, reviewPts = 0, inprogressPts = 0, backlogPts = 0;
+            let overdueCount = 0, overduePts = 0, dueSoonCount = 0, dueSoonPts = 0;
+
+            tasks.forEach(t => {
+                const pts = Number(t.points) || 0;
+                totalPts += pts;
+
+                if (t.status === 'done') donePts += pts;
+                else if (t.status === 'review') reviewPts += pts;
+                else if (t.status === 'inprogress') inprogressPts += pts;
+                else backlogPts += pts;
+
+                const dl = getDeadlineInfo(t);
+                if (dl.code === 'overdue') {
+                    overdueCount++;
+                    overduePts += pts;
+                } else if (dl.code === 'soon') {
+                    dueSoonCount++;
+                    dueSoonPts += pts;
+                }
+            });
+
+            const weightedPercent = totalPts > 0 ? Math.round((donePts / totalPts) * 100) : 0;
+            const reviewPercent = totalPts > 0 ? (reviewPts / totalPts) * 100 : 0;
+            const progressPercent = totalPts > 0 ? (inprogressPts / totalPts) * 100 : 0;
+
+            document.getElementById('weightedProgressBadge').textContent = `${weightedPercent}%`;
+            document.getElementById('completedPointsSummary').textContent = `${donePts} / ${totalPts}`;
+            document.getElementById('barDone').style.width = `${weightedPercent}%`;
+            document.getElementById('barReview').style.width = `${reviewPercent}%`;
+            document.getElementById('barProgress').style.width = `${progressPercent}%`;
+
+            document.getElementById('legendDonePts').textContent = donePts;
+            document.getElementById('legendReviewPts').textContent = reviewPts;
+            document.getElementById('legendProgressPts').textContent = inprogressPts;
+            document.getElementById('legendBacklogPts').textContent = backlogPts;
+
+            document.getElementById('kpiTotalPoints').textContent = totalPts;
+            document.getElementById('kpiTotalTasks').textContent = tasks.length;
+
+            document.getElementById('kpiInProgressPoints').textContent = inprogressPts;
+            document.getElementById('kpiWipLimit').textContent = projectMeta.wipLimit;
+            document.getElementById('headerWipLimit').textContent = projectMeta.wipLimit;
+
+            const wipCard = document.getElementById('kpiWipCard');
+            const wipStatusText = document.getElementById('kpiWipStatusText');
+            const wipAlertBanner = document.getElementById('wipAlertBanner');
+            const colInProgressWrapper = document.getElementById('colWrapper-inprogress');
+            const pointsInProgressBadge = document.getElementById('points-inprogress');
+
+            if (inprogressPts > projectMeta.wipLimit) {
+                wipCard.className = 'bg-rose-50/70 rounded-2xl p-4 border-2 border-rose-400 shadow-xs flex flex-col justify-between transition';
+                wipStatusText.className = 'text-xs text-rose-700 font-extrabold mt-0.5';
+                wipStatusText.textContent = `${dict.wipExceededBy} ${inprogressPts - projectMeta.wipLimit} ${dict.ptShort}!`;
+                wipAlertBanner.classList.remove('hidden');
+                colInProgressWrapper.classList.add('ring-2', 'ring-rose-400');
+                pointsInProgressBadge.className = 'text-xs font-extrabold px-2.5 py-1 rounded-lg bg-rose-600 text-white shadow-xs';
+            } else if (inprogressPts >= projectMeta.wipLimit * 0.85) {
+                wipCard.className = 'bg-amber-50/40 rounded-2xl p-4 border border-amber-300 shadow-xs flex flex-col justify-between transition';
+                wipStatusText.className = 'text-xs text-amber-700 font-bold mt-0.5';
+                wipStatusText.textContent = dict.wipNear;
+                wipAlertBanner.classList.add('hidden');
+                colInProgressWrapper.classList.remove('ring-2', 'ring-rose-400');
+                pointsInProgressBadge.className = 'text-xs font-extrabold px-2.5 py-1 rounded-lg bg-amber-600 text-white shadow-xs';
+            } else {
+                wipCard.className = 'bg-white rounded-2xl p-4 border border-slate-200 shadow-xs flex flex-col justify-between transition';
+                wipStatusText.className = 'text-xs text-emerald-600 font-semibold mt-0.5';
+                wipStatusText.textContent = dict.wipSafe;
+                wipAlertBanner.classList.add('hidden');
+                colInProgressWrapper.classList.remove('ring-2', 'ring-rose-400');
+                pointsInProgressBadge.className = 'text-xs font-extrabold px-2.5 py-1 rounded-lg bg-indigo-600 text-white shadow-xs';
+            }
+
+            document.getElementById('kpiOverdueCount').textContent = overdueCount;
+            document.getElementById('kpiOverduePoints').textContent = overduePts;
+            document.getElementById('kpiDueSoonCount').textContent = dueSoonCount;
+            document.getElementById('kpiDueSoonPoints').textContent = dueSoonPts;
+        }
+
+        // --- Render Weighted Kanban Board ---
+        function renderKanbanBoard() {
+            const statuses = ['backlog', 'inprogress', 'review', 'done'];
+            const filtered = getFilteredTasks();
+            const dict = i18n[projectMeta.lang];
+            const isAdmin = projectMeta.role === 'admin';
+
+            statuses.forEach(status => {
+                const container = document.getElementById(`col-${status}`);
+                const colTasks = filtered.filter(t => t.status === status);
+                const colPoints = colTasks.reduce((sum, t) => sum + (Number(t.points) || 0), 0);
+
+                document.getElementById(`count-${status}`).textContent = colTasks.length;
+                if (status === 'inprogress') {
+                    document.getElementById(`points-${status}`).textContent = `${colPoints} / ${projectMeta.wipLimit} ${dict.ptShort}`;
+                } else {
+                    document.getElementById(`points-${status}`).textContent = `${colPoints} ${dict.pointsWord}`;
+                }
+
+                container.innerHTML = '';
+
+                if (colTasks.length === 0) {
+                    container.innerHTML = `
+                        <div class="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center text-slate-400 text-xs flex flex-col items-center gap-2">
+                            <i data-lucide="inbox" class="w-6 h-6 stroke-1"></i>
+                            <span>${dict.emptyColumn}</span>
+                        </div>
+                    `;
+                    return;
+                }
+
+                colTasks.forEach(task => {
+                    const dl = getDeadlineInfo(task);
+                    const catClass = categoryStyles[task.category] || 'bg-slate-100 text-slate-700 border-slate-200';
+                    const isDone = task.status === 'done';
+                    const title = getTaskTitle(task);
+                    const assignee = getTaskAssignee(task);
+                    const notes = getTaskNotes(task);
+
+                    const statusOrder = ['backlog', 'inprogress', 'review', 'done'];
+                    const currentIdx = statusOrder.indexOf(task.status);
+                    const prevStatus = currentIdx > 0 ? statusOrder[currentIdx - 1] : null;
+                    const nextStatus = currentIdx < statusOrder.length - 1 ? statusOrder[currentIdx + 1] : null;
+
+                    const prevIcon = projectMeta.lang === 'ar' ? 'chevron-right' : 'chevron-left';
+                    const nextIcon = projectMeta.lang === 'ar' ? 'chevron-left' : 'chevron-right';
+                    const arrowDirSymbol = projectMeta.lang === 'ar' ? '←' : '→';
+
+                    const card = document.createElement('div');
+                    card.className = `task-card bg-white rounded-xl p-3.5 border ${dl.code === 'overdue' ? 'border-rose-300 ring-1 ring-rose-100' : 'border-slate-200/90'} shadow-xs ${isAdmin ? 'cursor-grab admin-draggable' : 'cursor-default'} flex flex-col gap-2.5`;
+                    card.draggable = isAdmin;
+                    if (isAdmin) {
+                        card.ondragstart = (e) => handleDragStart(e, task.id);
+                    }
+
+                    card.innerHTML = `
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-[11px] font-bold px-2 py-0.5 rounded-md border ${catClass}">
+                                ${escapeHtml(getCategoryName(task.category))}
+                            </span>
+                            <div class="flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 font-black text-xs">
+                                <i data-lucide="sparkles" class="w-3 h-3"></i>
+                                <span>${task.points}</span>
+                                <span class="text-[10px] font-bold">${dict.pointsWord}</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 class="font-bold text-sm text-slate-900 leading-snug ${isDone ? 'line-through text-slate-400' : ''}">
+                                ${escapeHtml(title)}
+                            </h4>
+                            ${notes ? `<p class="text-xs text-slate-500 mt-1 line-clamp-2">${escapeHtml(notes)}</p>` : ''}
+                        </div>
+
+                        <div class="flex flex-wrap items-center justify-between gap-1.5 pt-1">
+                            <div class="text-[11px] text-slate-500 flex items-center gap-1">
+                                <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i>
+                                <span>${formatShortDate(task.startDate)}</span>
+                                <span>${arrowDirSymbol}</span>
+                                <span class="font-bold text-slate-700">${formatShortDate(task.dueDate)}</span>
+                            </div>
+                            <span class="text-[11px] px-2 py-0.5 rounded-md border flex items-center gap-1 ${dl.badgeClass}">
+                                <i data-lucide="${dl.icon}" class="w-3 h-3"></i>
+                                <span>${dl.label}</span>
+                            </span>
+                        </div>
+
+                        <div class="pt-2.5 mt-0.5 border-t border-slate-100 flex items-center justify-between">
+                            <div class="flex items-center gap-1.5">
+                                <div class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 font-bold text-[11px] flex items-center justify-center">
+                                    ${escapeHtml(assignee.charAt(0))}
+                                </div>
+                                <span class="text-xs font-semibold text-slate-700 truncate max-w-[125px]">${escapeHtml(assignee)}</span>
+                            </div>
+
+                            ${isAdmin ? `
+                            <div class="flex items-center gap-0.5">
+                                ${prevStatus ? `
+                                    <button onclick="moveTaskStatus('${task.id}', '${prevStatus}')" class="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition">
+                                        <i data-lucide="${prevIcon}" class="w-4 h-4"></i>
+                                    </button>
+                                ` : ''}
+                                ${nextStatus ? `
+                                    <button onclick="moveTaskStatus('${task.id}', '${nextStatus}')" class="p-1 rounded-lg hover:bg-indigo-50 text-indigo-600 hover:text-indigo-800 transition">
+                                        <i data-lucide="${nextIcon}" class="w-4 h-4"></i>
+                                    </button>
+                                ` : ''}
+                                <button onclick="openTaskModal('${task.id}')" class="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-indigo-600 transition">
+                                    <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                                </button>
+                                <button onclick="deleteTask('${task.id}')" class="p-1 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition">
+                                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </div>
+                            ` : ''}
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            });
+        }
+
+        // --- Render Project Points Timeline (Gantt Roadmap) ---
+        window.renderTimeline = function() {
+            const tbody = document.getElementById('timelineTableBody');
+            const sortBy = document.getElementById('timelineSort').value;
+            const dict = i18n[projectMeta.lang];
+            const isAdmin = projectMeta.role === 'admin';
+            let filtered = [...getFilteredTasks()];
+
+            filtered.sort((a, b) => {
+                if (sortBy === 'dueDate') return a.dueDate.localeCompare(b.dueDate);
+                if (sortBy === 'startDate') return a.startDate.localeCompare(b.startDate);
+                if (sortBy === 'pointsDesc') return (Number(b.points) || 0) - (Number(a.points) || 0);
+                return 0;
+            });
+
+            tbody.innerHTML = '';
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="py-10 text-center text-slate-400 text-sm">${dict.emptyColumn}</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            const allTimestamps = filtered.flatMap(t => [
+                new Date(t.startDate + 'T00:00:00').getTime(),
+                new Date(t.dueDate + 'T00:00:00').getTime()
+            ]);
+            const minTime = Math.min(...allTimestamps);
+            const maxTime = Math.max(...allTimestamps);
+            const totalSpan = Math.max(maxTime - minTime, 86400000 * 7);
+
+            filtered.forEach(task => {
+                const dl = getDeadlineInfo(task);
+                const catClass = categoryStyles[task.category] || 'bg-slate-100 text-slate-700 border-slate-200';
+                const stInfo = getStatusInfo(task.status);
+
+                const startMs = new Date(task.startDate + 'T00:00:00').getTime();
+                const dueMs = new Date(task.dueDate + 'T00:00:00').getTime();
+                const offsetPercent = Math.max(0, Math.min(85, ((startMs - minTime) / totalSpan) * 100));
+                const widthPercent = Math.max(12, Math.min(100 - offsetPercent, ((dueMs - startMs + 86400000) / totalSpan) * 100));
+
+                let barColor = 'bg-indigo-500';
+                if (task.status === 'done') barColor = 'bg-emerald-500';
+                else if (dl.code === 'overdue') barColor = 'bg-rose-500';
+                else if (dl.code === 'soon') barColor = 'bg-amber-500';
+
+                const posSide = projectMeta.lang === 'ar' ? 'right' : 'left';
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50/90 transition';
+                tr.innerHTML = `
+                    <td class="py-3.5 px-4">
+                        <div class="font-bold text-slate-900 ${task.status === 'done' ? 'line-through text-slate-400' : ''}">${escapeHtml(getTaskTitle(task))}</div>
+                        <span class="inline-block mt-1 text-[11px] font-bold px-2 py-0.5 rounded-md border ${catClass}">${escapeHtml(getCategoryName(task.category))}</span>
+                    </td>
+                    <td class="py-3.5 px-3 text-center">
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 font-black text-xs">
+                            ${task.points} ${dict.pointsWord}
+                        </span>
+                    </td>
+                    <td class="py-3.5 px-3 font-semibold text-slate-700 text-xs">
+                        ${escapeHtml(getTaskAssignee(task))}
+                    </td>
+                    <td class="py-3.5 px-3">
+                        <span class="text-xs font-bold px-2.5 py-1 rounded-lg border ${stInfo.badge}">
+                            ${stInfo.name}
+                        </span>
+                    </td>
+                    <td class="py-3.5 px-3 text-xs text-slate-600 font-medium">
+                        <div>${dict.fromWord} <strong>${task.startDate}</strong></div>
+                        <div>${dict.toWord} <strong>${task.dueDate}</strong></div>
+                    </td>
+                    <td class="py-3.5 px-4">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-[11px] px-2 py-0.5 rounded-md border ${dl.badgeClass}">${dl.label}</span>
+                            <span class="text-[11px] text-slate-400 font-semibold">${calculateDurationDays(task.startDate, task.dueDate)} ${dict.workDays}</span>
+                        </div>
+                        <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden relative border border-slate-200">
+                            <div class="${barColor} h-full rounded-full absolute top-0" style="${posSide}: ${offsetPercent}%; width: ${widthPercent}%"></div>
+                        </div>
+                    </td>
+                    ${isAdmin ? `
+                    <td class="py-3.5 px-3 text-center">
+                        <div class="flex items-center justify-center gap-1">
+                            <button onclick="openTaskModal('${task.id}')" class="p-1.5 rounded-lg hover:bg-slate-200/70 text-slate-500 hover:text-indigo-600 transition">
+                                <i data-lucide="edit-3" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="deleteTask('${task.id}')" class="p-1.5 rounded-lg hover:bg-rose-50 text-slate-500 hover:text-rose-600 transition">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </td>
+                    ` : ''}
+                `;
+                tbody.appendChild(tr);
+            });
+        };
+
+        // --- Render Executive Summary Breakdown (Categories & Assignees) ---
+        function renderExecutiveSummary() {
+            const catContainer = document.getElementById('categoryBreakdownList');
+            const teamContainer = document.getElementById('assigneeBreakdownList');
+            const dict = i18n[projectMeta.lang];
+
+            // 1. Category Breakdown
+            const categories = ['infra', 'database', 'security', 'frontend', 'management', 'qa'];
+            catContainer.innerHTML = '';
+
+            categories.forEach(cat => {
+                const catTasks = tasks.filter(t => t.category === cat);
+                if (catTasks.length === 0) return;
+
+                const totalPts = catTasks.reduce((s, t) => s + (Number(t.points) || 0), 0);
+                const donePts = catTasks.filter(t => t.status === 'done').reduce((s, t) => s + (Number(t.points) || 0), 0);
+                const pct = totalPts > 0 ? Math.round((donePts / totalPts) * 100) : 0;
+                const catClass = categoryStyles[cat] || 'bg-slate-100 text-slate-700 border-slate-200';
+
+                const div = document.createElement('div');
+                div.className = 'p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2';
+                div.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold px-2.5 py-0.5 rounded-md border ${catClass}">${escapeHtml(getCategoryName(cat))}</span>
+                            <span class="text-xs text-slate-500">(${catTasks.length} ${dict.activitiesWord})</span>
+                        </div>
+                        <div class="text-xs font-extrabold text-slate-800">
+                            ${donePts} / ${totalPts} ${dict.pointsWord} <span class="text-indigo-600 ms-1">(${pct}%)</span>
+                        </div>
+                    </div>
+                    <div class="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                        <div class="bg-indigo-600 h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                    </div>
+                `;
+                catContainer.appendChild(div);
+            });
+
+            // 2. Team / Assignee Breakdown
+            const assigneeMap = {};
+            tasks.forEach(t => {
+                const name = getTaskAssignee(t).trim() || 'Unassigned';
+                if (!assigneeMap[name]) {
+                    assigneeMap[name] = { totalPts: 0, donePts: 0, activePts: 0, count: 0 };
+                }
+                const pts = Number(t.points) || 0;
+                assigneeMap[name].totalPts += pts;
+                assigneeMap[name].count += 1;
+                if (t.status === 'done') assigneeMap[name].donePts += pts;
+                if (t.status === 'inprogress') assigneeMap[name].activePts += pts;
+            });
+
+            teamContainer.innerHTML = '';
+            Object.entries(assigneeMap).forEach(([person, stats]) => {
+                const pct = stats.totalPts > 0 ? Math.round((stats.donePts / stats.totalPts) * 100) : 0;
+                const div = document.createElement('div');
+                div.className = 'p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2';
+                div.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <div class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center">
+                                ${escapeHtml(person.charAt(0))}
+                            </div>
+                            <div>
+                                <div class="text-xs font-extrabold text-slate-900">${escapeHtml(person)}</div>
+                                <div class="text-[11px] text-slate-500">${stats.count} ${dict.activitiesWord} • ${dict.statusProgressShort}: <strong>${stats.activePts} ${dict.ptShort}</strong></div>
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <div class="text-xs font-extrabold text-emerald-700">${stats.donePts} / ${stats.totalPts} ${dict.pointsWord}</div>
+                            <div class="text-[11px] font-bold text-slate-500">${pct}%</div>
+                        </div>
+                    </div>
+                    <div class="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                        <div class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                    </div>
+                `;
+                teamContainer.appendChild(div);
+            });
+        }
+
+        // --- Drag & Drop (Admin Only) ---
+        window.handleDragStart = function(e, taskId) {
+            if (projectMeta.role !== 'admin') return;
+            draggedTaskId = taskId;
+            e.dataTransfer.effectAllowed = 'move';
+        };
+
+        window.handleDragOver = function(e, status) {
+            if (projectMeta.role !== 'admin') return;
+            e.preventDefault();
+            e.currentTarget.classList.add('drag-over');
+        };
+
+        window.handleDragLeave = function(e) {
+            e.currentTarget.classList.remove('drag-over');
+        };
+
+        window.handleDrop = function(e, targetStatus) {
+            if (projectMeta.role !== 'admin') return;
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+            if (!draggedTaskId) return;
+            moveTaskStatus(draggedTaskId, targetStatus);
+            draggedTaskId = null;
+        };
+
+        window.moveTaskStatus = function(taskId, newStatus) {
+            if (projectMeta.role !== 'admin') return;
+            const idx = tasks.findIndex(t => t.id === taskId);
+            if (idx !== -1) {
+                tasks[idx].status = newStatus;
+                saveAllState();
+                renderAll();
+            }
+        };
+
+        // --- View Switcher (Kanban / Timeline / Executive Summary) ---
+        window.switchView = function(view) {
+            projectMeta.currentView = view;
+            const kanbanEl = document.getElementById('kanbanView');
+            const timelineEl = document.getElementById('timelineView');
+            const execEl = document.getElementById('executiveView');
+
+            const btnKanban = document.getElementById('btnViewKanban');
+            const btnTimeline = document.getElementById('btnViewTimeline');
+            const btnExec = document.getElementById('btnViewExecutive');
+
+            const activeClass = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition bg-white text-indigo-600 shadow-xs';
+            const inactiveClass = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition text-slate-600 hover:text-slate-900';
+
+            kanbanEl.classList.add('hidden');
+            timelineEl.classList.add('hidden');
+            timelineEl.classList.remove('flex');
+            execEl.classList.add('hidden');
+            execEl.classList.remove('grid');
+
+            btnKanban.className = inactiveClass;
+            btnTimeline.className = inactiveClass;
+            btnExec.className = inactiveClass;
+
+            if (view === 'kanban') {
+                kanbanEl.classList.remove('hidden');
+                btnKanban.className = activeClass;
+            } else if (view === 'timeline') {
+                timelineEl.classList.remove('hidden');
+                timelineEl.classList.add('flex');
+                btnTimeline.className = activeClass;
+            } else {
+                execEl.classList.remove('hidden');
+                execEl.classList.add('grid');
+                btnExec.className = activeClass;
+            }
+            lucide.createIcons();
+        };
+
+        // --- Add / Edit Task Modal (Admin Only) ---
+        window.openTaskModal = function(taskId = null, defaultStatus = 'backlog') {
+            if (projectMeta.role !== 'admin') return;
+            const modal = document.getElementById('taskModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const dict = i18n[projectMeta.lang];
+            document.getElementById('dateErrorMsg').classList.add('hidden');
+
+            if (taskId) {
+                const task = tasks.find(t => t.id === taskId);
+                if (!task) return;
+                modalTitle.innerHTML = `<i data-lucide="edit" class="w-5 h-5 text-indigo-600"></i><span>${dict.modalEditTitle}</span>`;
+                document.getElementById('taskId').value = task.id;
+                document.getElementById('taskTitleAr').value = task.titleAr || task.title || '';
+                document.getElementById('taskTitleEn').value = task.titleEn || '';
+                document.getElementById('taskCategory').value = task.category || 'frontend';
+                document.getElementById('taskPoints').value = task.points;
+                document.getElementById('taskStartDate').value = task.startDate;
+                document.getElementById('taskDueDate').value = task.dueDate;
+                document.getElementById('taskAssigneeAr').value = task.assigneeAr || task.assignee || '';
+                document.getElementById('taskAssigneeEn').value = task.assigneeEn || '';
+                document.getElementById('taskStatus').value = task.status;
+                document.getElementById('taskNotesAr').value = task.notesAr || task.notes || '';
+                document.getElementById('taskNotesEn').value = task.notesEn || '';
+            } else {
+                modalTitle.innerHTML = `<i data-lucide="plus-circle" class="w-5 h-5 text-indigo-600"></i><span>${dict.modalAddTitle}</span>`;
+                document.getElementById('taskForm').reset();
+                document.getElementById('taskId').value = '';
+                document.getElementById('taskPoints').value = '3';
+                document.getElementById('taskStartDate').value = getRelativeDate(0);
+                document.getElementById('taskDueDate').value = getRelativeDate(4);
+                document.getElementById('taskStatus').value = defaultStatus;
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            lucide.createIcons();
+        };
+
+        window.closeTaskModal = function() {
+            const modal = document.getElementById('taskModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        };
+
+        window.saveTask = function(e) {
+            e.preventDefault();
+            if (projectMeta.role !== 'admin') return;
+
+            const id = document.getElementById('taskId').value;
+            const titleAr = document.getElementById('taskTitleAr').value.trim();
+            const titleEn = document.getElementById('taskTitleEn').value.trim() || titleAr;
+            const category = document.getElementById('taskCategory').value;
+            const points = Number(document.getElementById('taskPoints').value) || 1;
+            const startDate = document.getElementById('taskStartDate').value;
+            const dueDate = document.getElementById('taskDueDate').value;
+            const assigneeAr = document.getElementById('taskAssigneeAr').value.trim();
+            const assigneeEn = document.getElementById('taskAssigneeEn').value.trim() || assigneeAr;
+            const status = document.getElementById('taskStatus').value;
+            const notesAr = document.getElementById('taskNotesAr').value.trim();
+            const notesEn = document.getElementById('taskNotesEn').value.trim() || notesAr;
+
+            if (dueDate < startDate) {
+                document.getElementById('dateErrorMsg').classList.remove('hidden');
+                return;
+            }
+
+            const payload = {
+                id: id || ('t-' + Date.now()),
+                titleAr,
+                titleEn,
+                category,
+                points,
+                startDate,
+                dueDate,
+                assigneeAr,
+                assigneeEn,
+                status,
+                notesAr,
+                notesEn
+            };
+
+            if (id) {
+                const idx = tasks.findIndex(t => t.id === id);
+                if (idx !== -1) tasks[idx] = payload;
+            } else {
+                tasks.unshift(payload);
+            }
+
+            saveAllState();
+            populateAssigneeFilter();
+            closeTaskModal();
+            renderAll();
+        };
+
+        window.deleteTask = function(taskId) {
+            if (projectMeta.role !== 'admin') return;
+            tasks = tasks.filter(t => t.id !== taskId);
+            saveAllState();
+            populateAssigneeFilter();
+            renderAll();
+        };
+
+        // --- Project Settings & WIP Limit Modal ---
+        window.openProjectSettingsModal = function() {
+            if (projectMeta.role !== 'admin') return;
+            document.getElementById('inputTitleAr').value = projectMeta.titleAr;
+            document.getElementById('inputTitleEn').value = projectMeta.titleEn;
+            document.getElementById('wipLimitInput').value = projectMeta.wipLimit;
+            document.getElementById('adminPinInput').value = projectMeta.adminPin || '1234';
+
+            const modal = document.getElementById('settingsModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        };
+
+        window.closeProjectSettingsModal = function() {
+            const modal = document.getElementById('settingsModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        };
+
+        window.saveProjectSettings = function() {
+            if (projectMeta.role !== 'admin') return;
+            projectMeta.titleAr = document.getElementById('inputTitleAr').value.trim() || projectMeta.titleAr;
+            projectMeta.titleEn = document.getElementById('inputTitleEn').value.trim() || projectMeta.titleEn;
+            const wip = Number(document.getElementById('wipLimitInput').value);
+            if (wip > 0) projectMeta.wipLimit = wip;
+            const pin = document.getElementById('adminPinInput').value.trim();
+            if (pin) projectMeta.adminPin = pin;
+
+            saveAllState();
+            closeProjectSettingsModal();
+            applyLanguageUI();
+        };
+
+        // --- Share & Free Hosting Modal ---
+        window.openShareHostingModal = function() {
+            const modal = document.getElementById('shareHostingModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            lucide.createIcons();
+        };
+
+        window.closeShareHostingModal = function() {
+            const modal = document.getElementById('shareHostingModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        };
+
+        window.copyRoleLink = function(roleType) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('mode', roleType === 'management' ? 'view' : 'admin');
+            url.searchParams.set('lang', projectMeta.lang);
+
+            const tempInput = document.createElement('input');
+            tempInput.value = url.toString();
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+
+            const dict = i18n[projectMeta.lang];
+            const btnId = roleType === 'management' ? 'copyMgmtBtnText' : 'copyAdminBtnText';
+            const origText = roleType === 'management' ? dict.btnCopyMgmtLink : dict.btnCopyAdminLink;
+            document.getElementById(btnId).textContent = dict.copiedText;
+            setTimeout(() => {
+                document.getElementById(btnId).textContent = origText;
+            }, 2000);
+        };
+
+        // --- JSON Backup Export / Import ---
+        window.exportJSONBackup = function() {
+            const backup = {
+                projectMeta,
+                tasks,
+                exportedAt: new Date().toISOString()
+            };
+            const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `kanban_project_backup_${getRelativeDate(0)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        };
+
+        window.importJSONBackup = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (Array.isArray(data.tasks)) {
+                        tasks = data.tasks;
+                        if (data.projectMeta) {
+                            projectMeta.titleAr = data.projectMeta.titleAr || projectMeta.titleAr;
+                            projectMeta.titleEn = data.projectMeta.titleEn || projectMeta.titleEn;
+                            projectMeta.wipLimit = data.projectMeta.wipLimit || projectMeta.wipLimit;
+                        }
+                        saveAllState();
+                        applyLanguageUI();
+                        closeShareHostingModal();
+                    }
+                } catch (err) {
+                    console.error('Invalid JSON file:', err);
+                }
+            };
+            reader.readAsText(file);
+        };
+
+        // --- Reset Modal ---
+        window.openResetModal = function() {
+            const modal = document.getElementById('resetModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        };
+
+        window.closeResetModal = function() {
+            const modal = document.getElementById('resetModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        };
+
+        window.confirmResetData = function() {
+            tasks = getDefaultTasks();
+            projectMeta.wipLimit = 15;
+            projectMeta.titleAr = 'مشروع تطوير المنصة الرقمية 2026';
+            projectMeta.titleEn = 'Digital Platform Development Project 2026';
+            saveAllState();
+            closeResetModal();
+            applyLanguageUI();
+        };
+
+        // --- Export CSV (Bilingual according to active language) ---
+        window.exportCSV = function() {
+            const isEn = projectMeta.lang === 'en';
+            const headers = isEn
+                ? ['Activity Title', 'Category', 'Points', 'Status', 'Assignee', 'Start Date', 'Due Date', 'Deadline Status', 'Notes']
+                : ['اسم النشاط', 'الفئة', 'النقاط', 'الحالة', 'المسؤول', 'تاريخ البدء', 'تاريخ الاستحقاق', 'حالة الموعد', 'ملاحظات'];
+
+            const rows = tasks.map(t => {
+                const dl = getDeadlineInfo(t);
+                const stInfo = getStatusInfo(t.status);
+                return [
+                    `"${getTaskTitle(t).replace(/"/g, '""')}"`,
+                    `"${getCategoryName(t.category)}"`,
+                    t.points,
+                    `"${stInfo.name}"`,
+                    `"${getTaskAssignee(t).replace(/"/g, '""')}"`,
+                    t.startDate,
+                    t.dueDate,
+                    `"${dl.label}"`,
+                    `"${getTaskNotes(t).replace(/"/g, '""')}"`
+                ].join(',');
+            });
+
+            const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `project_points_tracker_${projectMeta.lang}_${getRelativeDate(0)}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        };
+
+        // --- Utility Helpers ---
+        function formatShortDate(dateStr) {
+            if (!dateStr) return '';
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+            return `${parts[2]}/${parts[1]}`;
+        }
+
+        function calculateDurationDays(startStr, endStr) {
+            const s = new Date(startStr + 'T00:00:00');
+            const e = new Date(endStr + 'T00:00:00');
+            const diff = Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1;
+            return Math.max(1, diff);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // --- Start App ---
+        initLocalAndUrlState();
+        applyLanguageUI();
+        initCloudSync();
+    </script>
+</body>
+</html>
