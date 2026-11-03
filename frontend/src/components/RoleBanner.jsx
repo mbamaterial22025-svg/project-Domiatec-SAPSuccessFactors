@@ -115,14 +115,16 @@ export default function RoleBanner() {
             </button>
           )}
 
-          {/* Share & Free Web Hosting Guide Button */}
-          <button
-            onClick={() => setBackupModal(true)}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-xs"
-          >
-            <Globe className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{t.btnHostingAndShare}</span>
-          </button>
+          {/* Share & Free Web Hosting Guide Button (Admin Only - Hidden in Management View) */}
+          {isAdmin && (
+            <button
+              onClick={() => setBackupModal(true)}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-xs"
+            >
+              <Globe className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{t.btnHostingAndShare}</span>
+            </button>
+          )}
 
           {/* Language Switcher (AR / EN) */}
           <button
