@@ -23,6 +23,8 @@ export default function Header() {
     t,
     role,
     project,
+    tasks,
+    categories,
     currentView,
     setCurrentView,
     setTaskModal,
@@ -45,7 +47,56 @@ export default function Header() {
   });
 
   const handleExportCSV = () => {
-    window.location.href = api.getCSVUrl(lang);
+    try {
+      const isAr = lang === 'ar';
+      const headers = isAr
+        ? ['المعرف', 'عنوان النشاط (عربي)', 'عنوان النشاط (إنجليزي)', 'المرحلة / القسم', 'الوزن النسبي', 'الحالة', 'تاريخ البدء', 'تاريخ الاستحقاق', 'المسؤول']
+        : ['ID', 'Title (AR)', 'Title (EN)', 'Category', 'Weight', 'Status', 'Start Date', 'Due Date', 'Assignee'];
+
+      const statusMap = {
+        backlog: isAr ? 'قيد الانتظار' : 'Backlog',
+        in_progress: isAr ? 'قيد التنفيذ' : 'In Progress',
+        testing: isAr ? 'قيد المراجعة والاختبار' : 'Testing/Review',
+        completed: isAr ? 'مكتمل' : 'Completed'
+      };
+
+      const categoryMap = {};
+      (categories || []).forEach(c => {
+        categoryMap[c.key] = isAr ? c.nameAr : c.nameEn;
+      });
+
+      const escapeCSV = (val) => {
+        if (val === null || val === undefined) return '""';
+        return `"${String(val).replace(/"/g, '""')}"`;
+      };
+
+      const rows = (tasks || []).map(task => [
+        escapeCSV(task.id),
+        escapeCSV(task.titleAr || ''),
+        escapeCSV(task.titleEn || task.titleAr || ''),
+        escapeCSV(categoryMap[task.category] || task.category || ''),
+        escapeCSV(task.weight || 1),
+        escapeCSV(statusMap[task.status] || task.status),
+        escapeCSV(task.startDate || ''),
+        escapeCSV(task.dueDate || ''),
+        escapeCSV(task.assignedTo || '')
+      ]);
+
+      const csvContent = '\uFEFF' + [headers.map(escapeCSV).join(','), ...rows.map(r => r.join(','))].join('\r\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const dateStr = new Date().toISOString().split('T')[0];
+      link.setAttribute('download', `Domiatec_SAP_Activities_${dateStr}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Client CSV Export error:', err);
+      window.location.href = api.getCSVUrl(lang);
+    }
   };
 
   return (
@@ -166,6 +217,16 @@ export default function Header() {
                   </span>
                 </button>
 
+                {/* Export CSV (Admin Only - Hidden in Executive Management View) */}
+                <button
+                  onClick={handleExportCSV}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 transition"
+                  title={t.btnExportCSV}
+                >
+                  <Download className="w-4 h-4 text-emerald-600" />
+                  <span className="hidden sm:inline">{t.btnExportCSV}</span>
+                </button>
+
                 {/* Reset Default Data */}
                 <button
                   onClick={() => setResetModal(true)}
@@ -185,15 +246,6 @@ export default function Header() {
                 </button>
               </div>
             )}
-
-            {/* Export CSV (Both Management & Admin) */}
-            <button
-              onClick={handleExportCSV}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 transition"
-            >
-              <Download className="w-4 h-4 text-emerald-600" />
-              <span className="hidden sm:inline">{t.btnExportCSV}</span>
-            </button>
 
           </div>
         </div>
