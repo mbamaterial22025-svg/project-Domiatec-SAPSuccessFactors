@@ -1,5 +1,6 @@
-// Standalone Client-Side Store for Firebase Hosting / Offline resilience
-// Mirrors backend SQLite schema and business logic completely
+// Standalone Client-Side Store for Firebase Hosting / Cloud Sync
+// Mirrors backend SQLite schema and business logic completely with Cloud Firestore sync
+import { cloudStore } from './cloudStore';
 
 const STORAGE_KEYS = {
   PROJECT: 'wk_store_project',
@@ -169,6 +170,11 @@ function getStored(key, fallback) {
 function setStored(key, val) {
   try {
     localStorage.setItem(key, JSON.stringify(val));
+    // Asynchronously sync change directly to Cloud Firestore
+    if (key === STORAGE_KEYS.TASKS) cloudStore.updateField('tasks', val);
+    else if (key === STORAGE_KEYS.CATEGORIES) cloudStore.updateField('categories', val);
+    else if (key === STORAGE_KEYS.USERS) cloudStore.updateField('users', val);
+    else if (key === STORAGE_KEYS.PROJECT) cloudStore.updateField('project', val);
   } catch (e) {
     console.error('LocalStorage write error', e);
   }
@@ -532,6 +538,7 @@ export const localStore = {
     setStored(STORAGE_KEYS.CATEGORIES, DEFAULT_CATEGORIES);
     setStored(STORAGE_KEYS.USERS, DEFAULT_USERS);
     setStored(STORAGE_KEYS.TASKS, DEFAULT_TASKS);
+    cloudStore.syncToCloud();
     return { success: true };
   },
 
@@ -552,6 +559,7 @@ export const localStore = {
     if (backup.categories) setStored(STORAGE_KEYS.CATEGORIES, backup.categories);
     if (backup.tasks) setStored(STORAGE_KEYS.TASKS, backup.tasks);
     if (backup.users) setStored(STORAGE_KEYS.USERS, backup.users);
+    cloudStore.syncToCloud();
     return { success: true };
   }
 };

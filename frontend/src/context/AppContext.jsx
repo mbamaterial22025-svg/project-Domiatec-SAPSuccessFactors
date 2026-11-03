@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { translations } from '../i18n/translations';
 import { api } from '../services/api';
+import { cloudStore } from '../services/cloudStore';
 
 const AppContext = createContext();
 
@@ -118,6 +119,23 @@ export function AppProvider({ children }) {
       console.error('Failed to load users:', err);
     }
   };
+
+  // Cloud Firestore synchronization on mount to prevent data loss on clearing browser cache
+  useEffect(() => {
+    async function initCloudSync() {
+      try {
+        const res = await cloudStore.syncFromCloud();
+        if (res && res.success) {
+          setIsOnline(true);
+        }
+      } catch (e) {
+        console.warn('Initial cloud sync error:', e);
+      } finally {
+        refreshData();
+      }
+    }
+    initCloudSync();
+  }, []);
 
   useEffect(() => {
     refreshData();
