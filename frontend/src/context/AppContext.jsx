@@ -122,6 +122,7 @@ export function AppProvider({ children }) {
 
   // Cloud Firestore synchronization on mount to prevent data loss on clearing browser cache
   useEffect(() => {
+    let unsubscribe = null;
     async function initCloudSync() {
       try {
         const res = await cloudStore.syncFromCloud();
@@ -131,10 +132,18 @@ export function AppProvider({ children }) {
       } catch (e) {
         console.warn('Initial cloud sync error:', e);
       } finally {
-        refreshData();
+        await refreshData();
+        // Subscribe to realtime updates from Cloud Firestore
+        unsubscribe = cloudStore.subscribeToCloud(() => {
+          refreshData();
+        });
       }
     }
     initCloudSync();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   useEffect(() => {

@@ -6,3 +6,4 @@ export const firebaseConfig = {
   authDomain: "project-domiatec-sapsuccess.firebaseapp.com",
   messagingSenderId: "868032924552"
 };
+

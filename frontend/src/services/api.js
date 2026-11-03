@@ -2,6 +2,11 @@ import { localStore } from './localStore';
 
 const API_BASE = '/api';
 
+const isCloudHosted = typeof window !== 'undefined' && 
+  (window.location.hostname.includes('web.app') || 
+   window.location.hostname.includes('firebaseapp.com') ||
+   window.location.hostname.includes('github.io'));
+
 function getHeaders() {
   const headers = {
     'Content-Type': 'application/json'
@@ -23,6 +28,9 @@ function getHeaders() {
 
 // Safely execute API call with transparent fallback to localStore
 async function safeApiCall(apiFn, fallbackFn) {
+  if (isCloudHosted) {
+    if (fallbackFn) return fallbackFn();
+  }
   try {
     return await apiFn();
   } catch (err) {
