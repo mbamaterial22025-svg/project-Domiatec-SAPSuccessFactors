@@ -38,6 +38,11 @@ function initDatabase(db) {
     const seedSql = fs.readFileSync(path.join(__dirname, 'seed.sql'), 'utf-8');
     db.exec(seedSql);
 
+    // Ensure pin column exists in users
+    try {
+        db.exec('ALTER TABLE users ADD COLUMN pin TEXT;');
+    } catch (e) {}
+
     // 3. Seed initial 8 tasks if tasks table is empty
     const countRow = db.prepare('SELECT COUNT(*) as count FROM tasks').get();
     if (countRow.count === 0) {

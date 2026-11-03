@@ -16,7 +16,7 @@ class UserController {
 
     static createUser(req, res, next) {
         try {
-            const { username, password, fullName, role } = req.body;
+            const { username, password, fullName, role, pin } = req.body;
             if (!username || !password || !fullName) {
                 return res.status(400).json({
                     error: 'اسم المستخدم وكلمة المرور والاسم الكامل حقول مطلوبة.',
@@ -24,7 +24,7 @@ class UserController {
                 });
             }
 
-            const newUser = UserModel.createUser({ username, password, fullName, role });
+            const newUser = UserModel.createUser({ username, password, fullName, role, pin });
             res.status(201).json({
                 success: true,
                 message: 'تم إنشاء المستخدم بنجاح',
@@ -41,8 +41,8 @@ class UserController {
 
     static updateUser(req, res, next) {
         try {
-            const { username, password, fullName, role } = req.body;
-            const updated = UserModel.updateUser(req.params.id, { username, password, fullName, role });
+            const { username, password, fullName, role, pin } = req.body;
+            const updated = UserModel.updateUser(req.params.id, { username, password, fullName, role, pin });
             res.json({
                 success: true,
                 message: 'تم تحديث بيانات المستخدم بنجاح',

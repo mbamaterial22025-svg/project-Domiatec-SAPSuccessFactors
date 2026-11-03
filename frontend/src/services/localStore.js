@@ -195,13 +195,33 @@ export const localStore = {
     this.init();
     const users = getStored(STORAGE_KEYS.USERS, DEFAULT_USERS);
     
-    // Quick PIN match
-    if (pin && (pin === '1234' || users.some(u => u.pin === pin))) {
-      const u = users.find(u => u.pin === pin) || { id: 1, username: 'admin', role: 'admin' };
-      const token = 'local_token_' + Date.now();
-      localStorage.setItem('wk_token', token);
-      localStorage.setItem('wk_pin', pin);
-      return { success: true, token, user: { id: u.id, username: u.username, role: u.role || 'admin' } };
+    // Quick PIN match - checks any user with this PIN!
+    if (pin && pin.trim()) {
+      const trimmedPin = pin.trim();
+      const matchedUser = users.find(u => u.pin && u.pin.toString().trim() === trimmedPin);
+      if (matchedUser) {
+        const token = 'local_token_' + Date.now();
+        localStorage.setItem('wk_token', token);
+        localStorage.setItem('wk_pin', trimmedPin);
+        return {
+          success: true,
+          token,
+          user: {
+            id: matchedUser.id,
+            username: matchedUser.username,
+            fullName: matchedUser.fullName || matchedUser.username,
+            role: matchedUser.role || 'admin'
+          }
+        };
+      }
+      if (trimmedPin === '1234') {
+        const adminUser = users.find(u => u.role === 'admin') || { id: 1, username: 'admin', fullName: 'مدير النظام', role: 'admin' };
+        const token = 'local_token_' + Date.now();
+        localStorage.setItem('wk_token', token);
+        localStorage.setItem('wk_pin', '1234');
+        return { success: true, token, user: adminUser };
+      }
+      throw new Error('رمز PIN غير صحيح');
     }
 
     // Username/password match
@@ -209,7 +229,16 @@ export const localStore = {
     if (user && (user.passwordHash === password || (user.username === 'admin' && password === 'admin123'))) {
       const token = 'local_token_' + Date.now();
       localStorage.setItem('wk_token', token);
-      return { success: true, token, user: { id: user.id, username: user.username, role: user.role || 'admin' } };
+      return {
+        success: true,
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+          fullName: user.fullName || user.username,
+          role: user.role || 'admin'
+        }
+      };
     }
 
     throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة');
@@ -229,7 +258,16 @@ export const localStore = {
   getUsers() {
     this.init();
     const users = getStored(STORAGE_KEYS.USERS, DEFAULT_USERS);
-    return { users: users.map(u => ({ id: u.id, username: u.username, role: u.role || 'admin', createdAt: u.createdAt })) };
+    return {
+      users: users.map(u => ({
+        id: u.id,
+        username: u.username,
+        fullName: u.fullName || u.username,
+        role: u.role || 'admin',
+        pin: u.pin || '',
+        createdAt: u.createdAt
+      }))
+    };
   },
 
   createUser(userData) {
@@ -241,14 +279,15 @@ export const localStore = {
     const newUser = {
       id: Date.now(),
       username: userData.username,
-      role: userData.role || 'admin',
+      fullName: userData.fullName || userData.username,
+      role: userData.role || 'viewer',
       passwordHash: userData.password,
-      pin: userData.pin || '1234',
+      pin: userData.pin ? userData.pin.toString().trim() : '',
       createdAt: new Date().toISOString()
     };
     users.push(newUser);
     setStored(STORAGE_KEYS.USERS, users);
-    return { success: true, user: { id: newUser.id, username: newUser.username, role: newUser.role } };
+    return { success: true, user: { id: newUser.id, username: newUser.username, fullName: newUser.fullName, role: newUser.role, pin: newUser.pin } };
   },
 
   updateUser(id, userData) {
@@ -258,12 +297,13 @@ export const localStore = {
     if (idx === -1) throw new Error('المستخدم غير موجود');
 
     users[idx].username = userData.username || users[idx].username;
+    users[idx].fullName = userData.fullName || users[idx].fullName;
     users[idx].role = userData.role || users[idx].role;
     if (userData.password) users[idx].passwordHash = userData.password;
-    if (userData.pin) users[idx].pin = userData.pin;
+    if (userData.pin !== undefined) users[idx].pin = userData.pin ? userData.pin.toString().trim() : '';
 
     setStored(STORAGE_KEYS.USERS, users);
-    return { success: true, user: { id: users[idx].id, username: users[idx].username, role: users[idx].role } };
+    return { success: true, user: users[idx] };
   },
 
   deleteUser(id) {

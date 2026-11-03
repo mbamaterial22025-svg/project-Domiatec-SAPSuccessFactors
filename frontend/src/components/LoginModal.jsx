@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { LockKeyhole, User, KeyRound, X } from 'lucide-react';
+import { LockKeyhole, User, KeyRound, X, KeySquare } from 'lucide-react';
 
 export default function LoginModal() {
-  const { t, loginModal, setLoginModal, handleLogin } = useApp();
+  const { lang, t, loginModal, setLoginModal, handleLogin } = useApp();
 
   const [mode, setMode] = useState('credentials'); // 'credentials' | 'pin'
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin123');
-  const [pin, setPin] = useState('1234');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -35,12 +35,6 @@ export default function LoginModal() {
     }
   };
 
-  const fillDefaultAdmin = () => {
-    setUsername('admin');
-    setPassword('admin123');
-    setMode('credentials');
-  };
-
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl border border-slate-200 p-5 space-y-4">
@@ -50,12 +44,15 @@ export default function LoginModal() {
             <LockKeyhole className="w-5 h-5 text-indigo-600" />
             <span>{t.loginTitle}</span>
           </h3>
-          <button onClick={() => setLoginModal(false)} className="text-slate-400 hover:text-slate-600">
+          <button
+            onClick={() => setLoginModal(false)}
+            className="text-slate-400 hover:text-slate-600"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Tab Switcher: Username & Password vs PIN */}
+        {/* Tab Switcher: Username & Password vs Insert PIN */}
         <div className="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200 text-xs font-bold">
           <button
             type="button"
@@ -73,7 +70,7 @@ export default function LoginModal() {
               mode === 'pin' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            رمز PIN السريع
+            Insert PIN
           </button>
         </div>
 
@@ -90,7 +87,7 @@ export default function LoginModal() {
                     required
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder={t.usernamePlaceholder}
+                    placeholder={lang === 'ar' ? 'اسم المستخدم' : 'Username'}
                     className="w-full ps-9 pe-3 py-2 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold"
                   />
                 </div>
@@ -106,35 +103,27 @@ export default function LoginModal() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder={t.passwordPlaceholder}
+                    placeholder="••••••••"
                     className="w-full ps-9 pe-3 py-2 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold"
                   />
                 </div>
               </div>
-
-              {/* Quick default credential helper */}
-              <div className="p-2.5 rounded-xl bg-indigo-50/60 border border-indigo-100 flex items-center justify-between text-xs">
-                <span className="text-indigo-800">الأدمن الافتراضي: <strong>admin</strong> / <strong>admin123</strong></span>
-                <button
-                  type="button"
-                  onClick={fillDefaultAdmin}
-                  className="text-[11px] font-bold text-indigo-600 hover:underline"
-                >
-                  تعبئة تلقائية
-                </button>
-              </div>
             </>
           ) : (
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">PIN (1234)</label>
-              <input
-                type="password"
-                dir="ltr"
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                placeholder="1234"
-                className="w-full px-3.5 py-2 text-center tracking-widest text-lg font-black border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
+              <label className="block text-xs font-bold text-slate-700 mb-1">Insert PIN</label>
+              <div className="relative">
+                <KeySquare className="w-4 h-4 text-slate-400 absolute top-1/2 -translate-y-1/2 start-3" />
+                <input
+                  type="password"
+                  dir="ltr"
+                  required
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value)}
+                  placeholder="Insert PIN"
+                  className="w-full ps-9 pe-3 py-2 text-center tracking-widest text-base font-black border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
             </div>
           )}
 
@@ -148,16 +137,16 @@ export default function LoginModal() {
             <button
               type="button"
               onClick={() => setLoginModal(false)}
-              className="px-4 py-1.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100"
+              className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100"
             >
               {t.btnCancel}
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-1.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs disabled:opacity-50"
+              className="px-4 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
             >
-              {loading ? '...' : t.btnUnlockAdmin}
+              {loading ? '...' : (lang === 'ar' ? 'دخول' : 'Sign In')}
             </button>
           </div>
         </form>
@@ -165,4 +154,3 @@ export default function LoginModal() {
     </div>
   );
 }
-

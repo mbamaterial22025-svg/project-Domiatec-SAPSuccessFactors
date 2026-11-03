@@ -17,7 +17,7 @@ function verifyPassword(password, storedHash) {
 class UserModel {
     static getAllUsers() {
         return db.query(`
-            SELECT id, username, full_name AS fullName, role,
+            SELECT id, username, full_name AS fullName, role, pin,
                    created_at AS createdAt, updated_at AS updatedAt
             FROM users
             ORDER BY created_at ASC
@@ -26,11 +26,21 @@ class UserModel {
 
     static getUserById(id) {
         return db.get(`
-            SELECT id, username, full_name AS fullName, role,
+            SELECT id, username, full_name AS fullName, role, pin,
                    created_at AS createdAt, updated_at AS updatedAt
             FROM users
             WHERE id = ?
         `, [id]);
+    }
+
+    static getUserByPin(pin) {
+        if (!pin) return null;
+        return db.get(`
+            SELECT id, username, full_name AS fullName, role, pin,
+                   created_at AS createdAt, updated_at AS updatedAt
+            FROM users
+            WHERE pin = ?
+        `, [pin.toString().trim()]);
     }
 
     static getUserByUsername(username) {
@@ -42,7 +52,7 @@ class UserModel {
         `, [username.trim()]);
     }
 
-    static createUser({ username, password, fullName, role = 'admin' }) {
+    static createUser({ username, password, fullName, role = 'admin', pin = '' }) {
         const cleanUsername = username.trim().toLowerCase();
         const existing = this.getUserByUsername(cleanUsername);
         if (existing) {
@@ -56,16 +66,17 @@ class UserModel {
         const id = 'usr-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
         const passHash = hashPassword(password);
         const validRole = role === 'viewer' ? 'viewer' : 'admin';
+        const cleanPin = pin ? pin.toString().trim() : null;
 
         db.run(`
-            INSERT INTO users (id, username, password_hash, full_name, role)
-            VALUES (?, ?, ?, ?, ?)
-        `, [id, cleanUsername, passHash, fullName.trim(), validRole]);
+            INSERT INTO users (id, username, password_hash, full_name, role, pin)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `, [id, cleanUsername, passHash, fullName.trim(), validRole, cleanPin]);
 
         return this.getUserById(id);
     }
 
-    static updateUser(id, { username, password, fullName, role }) {
+    static updateUser(id, { username, password, fullName, role, pin }) {
         const existing = this.getUserById(id);
         if (!existing) {
             throw new Error('المستخدم غير موجود للتعديل.');
@@ -82,6 +93,7 @@ class UserModel {
 
         const newFullName = fullName !== undefined ? fullName.trim() : existing.fullName;
         const newRole = role !== undefined ? (role === 'viewer' ? 'viewer' : 'admin') : existing.role;
+        const newPin = pin !== undefined ? (pin ? pin.toString().trim() : null) : existing.pin;
 
         // If demoting to viewer, ensure at least one admin remains
         if (existing.role === 'admin' && newRole === 'viewer') {
@@ -98,15 +110,15 @@ class UserModel {
             const passHash = hashPassword(password.trim());
             db.run(`
                 UPDATE users
-                SET username = ?, full_name = ?, role = ?, password_hash = ?, updated_at = CURRENT_TIMESTAMP
+                SET username = ?, full_name = ?, role = ?, pin = ?, password_hash = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
-            `, [newUsername, newFullName, newRole, passHash, id]);
+            `, [newUsername, newFullName, newRole, newPin, passHash, id]);
         } else {
             db.run(`
                 UPDATE users
-                SET username = ?, full_name = ?, role = ?, updated_at = CURRENT_TIMESTAMP
+                SET username = ?, full_name = ?, role = ?, pin = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
-            `, [newUsername, newFullName, newRole, id]);
+            `, [newUsername, newFullName, newRole, newPin, id]);
         }
 
         return this.getUserById(id);

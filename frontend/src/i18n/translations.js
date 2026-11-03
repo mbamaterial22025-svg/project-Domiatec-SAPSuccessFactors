@@ -155,9 +155,9 @@ export const translations = {
     deleteCatConfirm: 'هل أنت متأكد من حذف هذه الفئة؟',
     loginTitle: 'تسجيل دخول الأدمن',
     usernameOrPin: 'اسم المستخدم أو PIN',
-    usernamePlaceholder: 'اسم المستخدم (مثال: admin)',
-    passwordPlaceholder: 'كلمة المرور (مثال: admin123)',
-    usePinOption: 'أو استخدم رمز PIN السريع (1234)',
+    usernamePlaceholder: 'اسم المستخدم',
+    passwordPlaceholder: 'كلمة المرور',
+    usePinOption: 'أو استخدم رمز PIN السريع',
     logoutBtn: 'تسجيل خروج'
   },
   en: {
@@ -316,9 +316,9 @@ export const translations = {
     deleteCatConfirm: 'Are you sure you want to delete this category?',
     loginTitle: 'Admin Authentication',
     usernameOrPin: 'Username or PIN',
-    usernamePlaceholder: 'Username (e.g. admin)',
-    passwordPlaceholder: 'Password (e.g. admin123)',
-    usePinOption: 'Or use quick Admin PIN (1234)',
+    usernamePlaceholder: 'Username',
+    passwordPlaceholder: 'Password',
+    usePinOption: 'Or use quick PIN',
     logoutBtn: 'Logout'
   }
 };

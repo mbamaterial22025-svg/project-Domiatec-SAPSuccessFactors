@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Users, UserPlus, Edit3, Trash2, ShieldCheck, Eye, X, Check } from 'lucide-react';
+import { Users, UserPlus, Edit3, Trash2, ShieldCheck, Eye, X, Check, KeySquare } from 'lucide-react';
 
 export default function UsersModal() {
   const { lang, t, role, usersModal, setUsersModal, users, saveUser, deleteUser } = useApp();
@@ -11,6 +11,7 @@ export default function UsersModal() {
     username: '',
     fullName: '',
     password: '',
+    pin: '',
     role: 'admin'
   });
   const [errorMsg, setErrorMsg] = useState('');
@@ -27,6 +28,7 @@ export default function UsersModal() {
       username: '',
       fullName: '',
       password: '',
+      pin: '',
       role: 'admin'
     });
     setIsEditing(true);
@@ -38,9 +40,10 @@ export default function UsersModal() {
     setFormData({
       id: user.id,
       username: user.username,
-      fullName: user.fullName,
+      fullName: user.fullName || user.username,
       password: '',
-      role: user.role
+      pin: user.pin || '',
+      role: user.role || 'admin'
     });
     setIsEditing(true);
   };
@@ -58,7 +61,7 @@ export default function UsersModal() {
 
     try {
       await saveUser(formData);
-      setSuccessMsg(formData.id ? 'تم تعديل المستخدم بنجاح!' : 'تم إنشاء المستخدم بنجاح!');
+      setSuccessMsg(formData.id ? (lang === 'ar' ? 'تم تعديل المستخدم بنجاح!' : 'User updated successfully!') : (lang === 'ar' ? 'تم إنشاء المستخدم بنجاح!' : 'User created successfully!'));
       setIsEditing(false);
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err) {
@@ -69,11 +72,11 @@ export default function UsersModal() {
   };
 
   const handleDelete = async (user) => {
-    if (!window.confirm(`${t.deleteUserConfirm} (${user.fullName})`)) return;
+    if (!window.confirm(`${t.deleteUserConfirm} (${user.fullName || user.username})`)) return;
 
     try {
       await deleteUser(user.id);
-      setSuccessMsg('تم حذف المستخدم بنجاح');
+      setSuccessMsg(lang === 'ar' ? 'تم حذف المستخدم بنجاح' : 'User deleted successfully');
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err) {
       alert(err.message || 'فشل حذف المستخدم');
@@ -150,7 +153,7 @@ export default function UsersModal() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
                     {t.lblPassword} {formData.id && <span className="text-slate-400 text-[10px]">({t.lblPasswordHint})</span>}
@@ -163,6 +166,22 @@ export default function UsersModal() {
                     onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
                     placeholder="••••••••"
                     className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
+                    <KeySquare className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>{lang === 'ar' ? 'رمز PIN مخصص' : 'Custom PIN'}</span>
+                  </label>
+                  <input
+                    type="text"
+                    dir="ltr"
+                    maxLength={8}
+                    value={formData.pin}
+                    onChange={(e) => setFormData(prev => ({ ...prev, pin: e.target.value }))}
+                    placeholder="e.g. 5678"
+                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-xl bg-white font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
 
@@ -215,6 +234,7 @@ export default function UsersModal() {
                 <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
                   <th className="py-2.5 px-3 text-start">{t.thFullName}</th>
                   <th className="py-2.5 px-3 text-start">{t.thUsername}</th>
+                  <th className="py-2.5 px-3 text-start">PIN</th>
                   <th className="py-2.5 px-3 text-start">{t.thRole}</th>
                   <th className="py-2.5 px-3 text-start">{t.thCreatedAt}</th>
                   <th className="py-2.5 px-3 text-center">{t.thAction}</th>
@@ -223,7 +243,7 @@ export default function UsersModal() {
               <tbody className="divide-y divide-slate-200">
                 {users.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="py-6 text-center text-slate-400">
+                    <td colSpan="6" className="py-6 text-center text-slate-400">
                       لا يوجد مستخدمون حالياً
                     </td>
                   </tr>
@@ -234,11 +254,21 @@ export default function UsersModal() {
                         <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center shrink-0">
                           {u.fullName ? u.fullName.charAt(0) : 'U'}
                         </div>
-                        <span>{u.fullName}</span>
+                        <span>{u.fullName || u.username}</span>
                       </td>
 
                       <td className="py-2.5 px-3 font-mono text-slate-600 font-semibold" dir="ltr">
                         @{u.username}
+                      </td>
+
+                      <td className="py-2.5 px-3 font-mono text-slate-700 font-bold" dir="ltr">
+                        {u.pin ? (
+                          <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[11px] text-slate-800">
+                            {u.pin}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 text-[11px]">-</span>
+                        )}
                       </td>
 
                       <td className="py-2.5 px-3">
@@ -259,7 +289,7 @@ export default function UsersModal() {
                       </td>
 
                       <td className="py-2.5 px-3 text-slate-500">
-                        {u.createdAt ? u.createdAt.split(' ')[0] : '-'}
+                        {u.createdAt ? u.createdAt.split('T')[0].split(' ')[0] : '-'}
                       </td>
 
                       <td className="py-2.5 px-3 text-center">
@@ -291,4 +321,3 @@ export default function UsersModal() {
     </div>
   );
 }
-

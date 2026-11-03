@@ -7,27 +7,45 @@ class AuthController {
         try {
             const { username, password, pin } = req.body;
 
-            // 1. PIN-based fallback login
+            // 1. PIN-based login (checks specific user PIN or project admin PIN)
             if (pin && !username && !password) {
-                const isValidPin = ProjectModel.verifyPin('main-project', pin);
-                if (!isValidPin) {
-                    return res.status(401).json({
-                        success: false,
-                        error: 'رمز PIN غير صحيح!',
-                        errorEn: 'Incorrect PIN!'
+                const cleanPin = pin.toString().trim();
+                const userByPin = UserModel.getUserByPin ? UserModel.getUserByPin(cleanPin) : null;
+                if (userByPin) {
+                    const session = TokenService.createSession({
+                        id: userByPin.id,
+                        username: userByPin.username,
+                        fullName: userByPin.fullName || userByPin.username,
+                        role: userByPin.role || 'viewer'
+                    });
+                    return res.json({
+                        success: true,
+                        message: `مرحباً بك، ${userByPin.fullName}`,
+                        token: session.token,
+                        user: session.user
                     });
                 }
-                const session = TokenService.createSession({
-                    id: 'pin-admin',
-                    username: 'admin',
-                    fullName: 'مدير النظام (PIN)',
-                    role: 'admin'
-                });
-                return res.json({
-                    success: true,
-                    message: 'تم تسجيل الدخول بنجاح',
-                    token: session.token,
-                    user: session.user
+
+                const isValidPin = ProjectModel.verifyPin('main-project', cleanPin);
+                if (isValidPin) {
+                    const session = TokenService.createSession({
+                        id: 'pin-admin',
+                        username: 'admin',
+                        fullName: 'مدير النظام (PIN)',
+                        role: 'admin'
+                    });
+                    return res.json({
+                        success: true,
+                        message: 'تم تسجيل الدخول بنجاح',
+                        token: session.token,
+                        user: session.user
+                    });
+                }
+
+                return res.status(401).json({
+                    success: false,
+                    error: 'رمز PIN غير صحيح!',
+                    errorEn: 'Incorrect PIN!'
                 });
             }
 
