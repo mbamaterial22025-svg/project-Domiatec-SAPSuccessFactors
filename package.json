@@ -12,5 +12,8 @@
     "dev:frontend": "npm --prefix frontend run dev",
     "dev": "node run-dev.js"
   },
-  "keywords": ["kanban", "weighted-points", "timeline", "react", "express", "sqlite"]
+  "keywords": ["kanban", "weighted-points", "timeline", "react", "express", "sqlite"],
+  "engines": {
+    "node": ">=22.5.0"
+  }
 }
