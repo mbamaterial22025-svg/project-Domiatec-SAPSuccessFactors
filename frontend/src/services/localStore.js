@@ -543,7 +543,7 @@ export const localStore = {
       project: getStored(STORAGE_KEYS.PROJECT, DEFAULT_PROJECT),
       categories: getStored(STORAGE_KEYS.CATEGORIES, DEFAULT_CATEGORIES),
       tasks: getStored(STORAGE_KEYS.TASKS, DEFAULT_TASKS),
-      users: getStored(STORAGE_KEYS.USERS, DEFAULT_USERS).map(u => ({ id: u.id, username: u.username, role: u.role }))
+      users: getStored(STORAGE_KEYS.USERS, DEFAULT_USERS)
     };
   },
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
 import {
@@ -14,7 +14,9 @@ import {
   GanttChart,
   PieChart,
   Users,
-  FolderKanban
+  FolderKanban,
+  DownloadCloud,
+  UploadCloud
 } from 'lucide-react';
 
 export default function Header() {
@@ -31,9 +33,11 @@ export default function Header() {
     setSettingsModal,
     setUsersModal,
     setCategoriesModal,
-    setResetModal
+    setResetModal,
+    refreshData
   } = useApp();
 
+  const fileInputRef = useRef(null);
   const isAdmin = role === 'admin';
   const projectTitle = lang === 'en' ? project.titleEn : project.titleAr;
 
@@ -97,6 +101,51 @@ export default function Header() {
       console.error('Client CSV Export error:', err);
       window.location.href = api.getCSVUrl(lang);
     }
+  };
+
+  const handleDownloadBackup = async () => {
+    try {
+      const data = await api.exportJSON();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const today = new Date().toISOString().split('T')[0];
+      a.download = `Domiatec_SAP_Full_Backup_${today}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(lang === 'ar' ? 'فشل تحميل النسخة الاحتياطية: ' + err.message : 'Failed to download backup: ' + err.message);
+    }
+  };
+
+  const handleRestoreFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!window.confirm(lang === 'ar'
+      ? 'هل أنت متأكد من استرجاع البيانات من هذا الملف؟ سيتم تحديث وتعديل كافة الأنشطة والمستخدمين.'
+      : 'Are you sure you want to restore data from this backup file? All activities and users will be updated.')) {
+      e.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const json = JSON.parse(event.target.result);
+        await api.importJSON(json);
+        alert(lang === 'ar' ? '✅ تم استرجاع النسخة الاحتياطية بنجاح!' : '✅ Backup restored successfully!');
+        await refreshData();
+      } catch (err) {
+        alert(lang === 'ar' ? 'فشل استرجاع النسخة: ' + (err.message || 'ملف غير صالح') : 'Failed to restore backup: ' + (err.message || 'Invalid file'));
+      } finally {
+        e.target.value = '';
+      }
+    };
+    reader.readAsText(file);
   };
 
   return (
@@ -220,11 +269,38 @@ export default function Header() {
                 {/* Export CSV (Admin Only - Hidden in Executive Management View) */}
                 <button
                   onClick={handleExportCSV}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 transition"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition"
                   title={t.btnExportCSV}
                 >
                   <Download className="w-4 h-4 text-emerald-600" />
                   <span className="hidden sm:inline">{t.btnExportCSV}</span>
+                </button>
+
+                {/* Take Full Backup Button */}
+                <button
+                  onClick={handleDownloadBackup}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 transition"
+                  title={lang === 'ar' ? 'أخذ نسخة احتياطية كاملة (تحميل ملف JSON)' : 'Take Full Backup (JSON)'}
+                >
+                  <DownloadCloud className="w-4 h-4 text-sky-600" />
+                  <span className="hidden sm:inline">{lang === 'ar' ? 'نسخة احتياطية' : 'Backup'}</span>
+                </button>
+
+                {/* Restore Backup Button */}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleRestoreFileChange}
+                  accept=".json"
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 transition"
+                  title={lang === 'ar' ? 'استرجاع النظام من نسخة احتياطية (ملف JSON)' : 'Restore from Backup (JSON)'}
+                >
+                  <UploadCloud className="w-4 h-4 text-purple-600" />
+                  <span className="hidden sm:inline">{lang === 'ar' ? 'استرجاع نسخة' : 'Restore'}</span>
                 </button>
 
                 {/* Reset Default Data */}
