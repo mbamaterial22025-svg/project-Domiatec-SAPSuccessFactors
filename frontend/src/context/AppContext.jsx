@@ -52,6 +52,7 @@ export function AppProvider({ children }) {
   const [categoriesModal, setCategoriesModal] = useState(false);
   const [backupModal, setBackupModal] = useState(false);
   const [resetModal, setResetModal] = useState(false);
+  const [adminSidebarOpen, setAdminSidebarOpen] = useState(false);
 
   const t = translations[lang] || translations.ar;
 
@@ -316,6 +317,8 @@ export function AppProvider({ children }) {
         setBackupModal,
         resetModal,
         setResetModal,
+        adminSidebarOpen,
+        setAdminSidebarOpen,
         toggleLanguage,
         requestRoleSwitch,
         handleLogin,

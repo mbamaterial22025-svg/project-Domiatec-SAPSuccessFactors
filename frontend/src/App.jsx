@@ -14,12 +14,15 @@ import UsersModal from './components/UsersModal';
 import CategoriesModal from './components/CategoriesModal';
 import BackupModal from './components/BackupModal';
 import ResetModal from './components/ResetModal';
+import AdminSidebar from './components/AdminSidebar';
 
 export default function App() {
   const { currentView } = useApp();
 
   return (
     <div className="min-h-screen flex flex-col bg-[#f8fafc] text-slate-800">
+      {/* Animated Admin Sidebar Drawer */}
+      <AdminSidebar />
       {/* Top Banner (Role indicator & switcher, User info, Language toggle) */}
       <RoleBanner />
 
