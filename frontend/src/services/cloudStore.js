@@ -44,7 +44,7 @@ export const cloudStore = {
 
       if (snapshot.exists()) {
         const cloudData = snapshot.data();
-        if (cloudData.tasks && Array.isArray(cloudData.tasks) && cloudData.tasks.length > 0) {
+        if (cloudData.tasks && Array.isArray(cloudData.tasks)) {
           const normalized = cloudData.tasks.map(normalizeTask);
           localStorage.setItem('wk_store_tasks', JSON.stringify(normalized));
         }
@@ -85,7 +85,7 @@ export const cloudStore = {
         if (snapshot.exists()) {
           const cloudData = snapshot.data();
           let changed = false;
-          if (cloudData.tasks && Array.isArray(cloudData.tasks) && cloudData.tasks.length > 0) {
+          if (cloudData.tasks && Array.isArray(cloudData.tasks)) {
             const normalized = cloudData.tasks.map(normalizeTask);
             localStorage.setItem('wk_store_tasks', JSON.stringify(normalized));
             changed = true;

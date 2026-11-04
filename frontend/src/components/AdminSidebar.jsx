@@ -1,6 +1,9 @@
 import React, { useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
+import { parseActivitiesFile } from '../utils/csvParser';
+import { localStore } from '../services/localStore';
+import { cloudStore } from '../services/cloudStore';
 import {
   X,
   Plus,
@@ -51,6 +54,73 @@ export default function AdminSidebar() {
   } = useApp();
 
   const fileInputRef = useRef(null);
+  const uploadDataInputRef = useRef(null);
+
+  const handleUploadDataFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const fileName = file.name;
+    const fileExt = fileName.split('.').pop().toLowerCase();
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const content = event.target.result;
+        let importedTasks = [];
+
+        if (fileExt === 'json') {
+          const parsed = JSON.parse(content);
+          if (parsed.tasks && Array.isArray(parsed.tasks)) {
+            importedTasks = parsed.tasks;
+          } else if (Array.isArray(parsed)) {
+            importedTasks = parsed;
+          } else if (parsed.project) {
+            await api.importJSON(parsed);
+            alert(lang === 'ar' ? '✅ تم استرجاع النسخة الاحتياطية بنجاح!' : '✅ Backup restored successfully!');
+            await refreshData();
+            handleClose();
+            return;
+          }
+        } else {
+          importedTasks = parseActivitiesFile(content, 'csv', categories);
+        }
+
+        if (!importedTasks || importedTasks.length === 0) {
+          throw new Error(lang === 'ar' ? 'لم يتم العثور على أنشطة صالحة في الملف المرفوع' : 'No valid activities found in uploaded file');
+        }
+
+        const confirmMsg = lang === 'ar'
+          ? 'تم العثور على (' + importedTasks.length + ') نشاط في الملف المرفوع.\n\n' +
+            '• هل ترغب في استبدال كافة الأنشطة الحالية بالبيانات الجديدة المرفوعة وحفظها في السحابة؟'
+          : 'Found (' + importedTasks.length + ') activities in the file.\n\n' +
+            '• Do you want to replace all current activities with this new data and save to cloud?';
+
+        if (!window.confirm(confirmMsg)) {
+          return;
+        }
+
+        await localStore.setStored('wk_store_tasks', importedTasks);
+        await cloudStore.updateField('tasks', importedTasks);
+
+        alert(lang === 'ar'
+          ? '✅ تم رفع واستيراد ' + importedTasks.length + ' نشاط بنجاح وحفظها سحابياً!'
+          : '✅ Successfully imported and saved ' + importedTasks.length + ' activities to cloud!');
+
+        await refreshData();
+        handleClose();
+      } catch (err) {
+        console.error('Upload data error:', err);
+        alert(lang === 'ar'
+          ? '❌ فشل استيراد البيانات: ' + (err.message || 'خطأ غير معروف')
+          : '❌ Failed to import data: ' + (err.message || 'Unknown error'));
+      } finally {
+        e.target.value = '';
+      }
+    };
+
+    reader.readAsText(file);
+  };
   const isAdmin = role === 'admin';
 
   if (!isAdmin) return null;
@@ -184,6 +254,8 @@ export default function AdminSidebar() {
 
       {/* Modern Drawer Container */}
       <aside
+        id="adminSidebarDrawer"
+        dir={isRtl ? 'rtl' : 'ltr'}
         className={`fixed top-0 bottom-0 z-50 w-84 sm:w-96 bg-white shadow-2xl flex flex-col transition-all duration-300 ease-out ${
           isRtl
             ? `right-0 border-l border-slate-200 ${adminSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`
@@ -466,6 +538,29 @@ export default function AdminSidebar() {
               </div>
               <span className="text-[10px] text-sky-700 font-extrabold px-1.5 py-0.5 rounded-md bg-sky-50 border border-sky-200">
                 .JSON
+              </span>
+            </button>
+
+                        {/* Upload & Import Activities */}
+            <input
+              type="file"
+              ref={uploadDataInputRef}
+              onChange={handleUploadDataFileChange}
+              accept=".csv,.json,.txt"
+              className="hidden"
+            />
+            <button
+              onClick={() => uploadDataInputRef.current?.click()}
+              className="w-full p-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-white hover:text-indigo-700 hover:shadow-xs border border-transparent hover:border-slate-200 flex items-center justify-between transition-all group"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 rounded-lg bg-indigo-100 text-indigo-700 group-hover:scale-105 transition-transform">
+                  <UploadCloud className="w-4 h-4" />
+                </div>
+                <span>{lang === 'ar' ? 'رفع واستيراد البيانات (Upload Data)' : 'Upload & Import Data'}</span>
+              </div>
+              <span className="text-[10px] text-indigo-700 font-extrabold px-1.5 py-0.5 rounded-md bg-indigo-50 border border-indigo-200">
+                .CSV / .JSON
               </span>
             </button>
 
