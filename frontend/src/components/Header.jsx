@@ -157,11 +157,13 @@ export default function Header() {
 
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-2.5">
-        <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6">
+        
+        {/* ROW 1: Project Identity, Official Logo & Primary Operations */}
+        <div className="py-2.5 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100">
           
-          {/* Brand & Project Identity */}
-          <div className="flex items-center gap-3">
+          {/* Logo & Project Titles */}
+          <div className="flex items-center gap-3 min-w-0">
             {/* Domiatec Official Company Logo */}
             <div className="flex items-center px-2 py-1 bg-white rounded-xl border border-slate-200 shadow-2xs shrink-0">
               <img
@@ -172,90 +174,55 @@ export default function Header() {
             </div>
 
             {/* Subtle Divider */}
-            <div className="h-9 w-px bg-slate-200 hidden sm:block shrink-0" />
+            <div className="h-8 w-px bg-slate-200 hidden sm:block shrink-0" />
 
             {/* Project Details */}
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200">
+                <span className="text-[11px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 shrink-0">
                   ٢٠٢٦
                 </span>
 
-                <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                <span className="text-[11px] font-bold tracking-wider px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200 shrink-0">
                   {t.systemTag}
                 </span>
 
-                <span className="text-xs text-slate-500 hidden sm:flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{currentDateStr}</span>
-                </span>
+                {!isAdmin && (
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 inline-flex items-center gap-1 shrink-0">
+                    <Eye className="w-3 h-3" />
+                    <span>{t.readOnlyBadge}</span>
+                  </span>
+                )}
               </div>
 
               <div className="flex items-center gap-2 mt-0.5">
                 <h1
                   onClick={() => isAdmin && setSettingsModal(true)}
-                  className={`text-base sm:text-lg font-black text-slate-900 transition flex items-center gap-1.5 truncate ${
+                  className={`text-base sm:text-lg font-black text-slate-900 transition flex items-center gap-1.5 ${
                     isAdmin ? 'cursor-pointer hover:text-indigo-600' : ''
                   }`}
                   title={isAdmin ? (lang === 'ar' ? 'انقر لتعديل عنوان المشروع' : 'Click to edit project settings') : ''}
                 >
-                  <span className="truncate">{projectTitle}</span>
+                  <span>{projectTitle}</span>
                   {isAdmin && <PenLine className="w-4 h-4 text-slate-400 hover:text-indigo-600 shrink-0" />}
                 </h1>
               </div>
             </div>
           </div>
 
-          {/* Unified Single-Row Toolbar: View Switcher + Actions */}
-          <div className="flex items-center justify-start xl:justify-end gap-2.5 overflow-x-auto no-scrollbar py-0.5">
-            
-            {/* 3 Views: Operational Workflow Board | Project Timeline | Executive Summary */}
-            <div className="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200 shrink-0 shadow-2xs">
-              <button
-                onClick={() => setCurrentView('kanban')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition ${
-                  currentView === 'kanban'
-                    ? 'bg-white text-indigo-600 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Columns4 className="w-3.5 h-3.5" />
-                <span>Operational Workflow Board</span>
-              </button>
-
-              <button
-                onClick={() => setCurrentView('timeline')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition ${
-                  currentView === 'timeline'
-                    ? 'bg-white text-indigo-600 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <GanttChart className="w-3.5 h-3.5" />
-                <span>Project Timeline</span>
-              </button>
-
-              <button
-                onClick={() => setCurrentView('executive')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition ${
-                  currentView === 'executive'
-                    ? 'bg-white text-indigo-600 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <PieChart className="w-3.5 h-3.5" />
-                <span>Executive Summary</span>
-              </button>
+          {/* Primary Action Buttons on Row 1 */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Date Display */}
+            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-500 bg-slate-50 border border-slate-200/80">
+              <Calendar className="w-3.5 h-3.5 text-slate-400" />
+              <span>{currentDateStr}</span>
             </div>
-
-            {/* Subtle Divider */}
-            <div className="h-7 w-px bg-slate-200 hidden md:block shrink-0" />
 
             {/* Instant Cloud Sync Button */}
             <button
               onClick={handleManualRefresh}
               disabled={isRefreshing}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-indigo-700 border border-slate-200 transition shadow-2xs active:scale-95 shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-indigo-700 border border-slate-200 transition shadow-2xs active:scale-95"
               title={lang === 'ar' ? 'تحديث فوري لجميع البيانات والمستجدات من السحابة' : 'Instant sync with cloud'}
             >
               <RefreshCw className={`w-3.5 h-3.5 text-indigo-600 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -268,7 +235,7 @@ export default function Header() {
                 {/* Admin Animated Sidebar Toggle Button */}
                 <button
                   onClick={() => setAdminSidebarOpen(true)}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-700 hover:from-indigo-700 hover:to-violet-800 text-white shadow-md shadow-indigo-300/30 transition transform hover:scale-102 active:scale-95 shrink-0"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-black bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-700 hover:from-indigo-700 hover:to-violet-800 text-white shadow-md shadow-indigo-300/30 transition transform hover:scale-102 active:scale-95"
                   title={lang === 'ar' ? 'فتح لوحة تحكم وإدارة النظام' : 'Open Admin Panel'}
                 >
                   <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -278,7 +245,7 @@ export default function Header() {
                 {/* Quick Add Activity Button */}
                 <button
                   onClick={() => setTaskModal({ isOpen: true, taskId: null, defaultStatus: 'backlog' })}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 transition transform hover:scale-102 active:scale-95 shrink-0"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-black bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 transition transform hover:scale-102 active:scale-95"
                   title={t.btnAddActivity}
                 >
                   <Plus className="w-3.5 h-3.5" />
@@ -286,9 +253,62 @@ export default function Header() {
                 </button>
               </>
             )}
-
           </div>
         </div>
+
+        {/* ROW 2: Dedicated Navigation Tabs for Views */}
+        <div className="py-2 flex items-center justify-between gap-3 overflow-x-auto no-scrollbar">
+          {/* The 3 View Tabs */}
+          <div className="flex items-center gap-1 sm:gap-2">
+            <button
+              onClick={() => setCurrentView('kanban')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-black transition-all duration-200 ${
+                currentView === 'kanban'
+                  ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-200'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <Columns4 className="w-4 h-4" />
+              <span>Operational Workflow Board</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                currentView === 'kanban' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+              }`}>
+                {tasks?.length || 0}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setCurrentView('timeline')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-black transition-all duration-200 ${
+                currentView === 'timeline'
+                  ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-200'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <GanttChart className="w-4 h-4" />
+              <span>Project Timeline</span>
+            </button>
+
+            <button
+              onClick={() => setCurrentView('executive')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-black transition-all duration-200 ${
+                currentView === 'executive'
+                  ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-200'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <PieChart className="w-4 h-4" />
+              <span>Executive Summary</span>
+            </button>
+          </div>
+
+          {/* Right indicator on row 2 */}
+          <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-slate-500">
+            <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+            <span>{lang === 'ar' ? 'عرض تفاعلي مباشر' : 'Live Interactive Board'}</span>
+          </div>
+        </div>
+
       </div>
     </header>
   );
