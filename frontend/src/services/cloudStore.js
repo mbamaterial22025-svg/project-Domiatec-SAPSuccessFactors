@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getFirestore, doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, getDocFromServer, setDoc, onSnapshot } from 'firebase/firestore';
 import { firebaseConfig } from './firebaseConfig';
 import { normalizeTask, DEFAULT_PROJECT, DEFAULT_CATEGORIES, DEFAULT_USERS, DEFAULT_TASKS } from './localStore';
 
@@ -24,12 +24,23 @@ function cleanForFirestore(obj) {
 }
 
 export const cloudStore = {
-  // Check if Firestore is reachable and sync data
-  async syncFromCloud() {
+  // Check if Firestore is reachable and sync fresh data directly from server
+  async syncFromCloud(forceServer = true) {
     try {
       const firestore = getDbInstance();
       const docRef = doc(firestore, DOC_REF_PATH[0], DOC_REF_PATH[1]);
-      const snapshot = await getDoc(docRef);
+      
+      let snapshot;
+      try {
+        if (forceServer) {
+          snapshot = await getDocFromServer(docRef);
+        } else {
+          snapshot = await getDoc(docRef);
+        }
+      } catch (netErr) {
+        // Fallback to cache if offline
+        snapshot = await getDoc(docRef);
+      }
 
       if (snapshot.exists()) {
         const cloudData = snapshot.data();

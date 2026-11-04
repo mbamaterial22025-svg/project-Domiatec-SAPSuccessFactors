@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { ShieldCheck, Eye, LockKeyhole, Globe, Languages, Users, FolderKanban, LogOut, User } from 'lucide-react';
+import { ShieldCheck, Eye, LockKeyhole, Globe, Languages, Users, FolderKanban, LogOut, User, RefreshCw } from 'lucide-react';
 
 export default function RoleBanner() {
   const {
@@ -14,7 +14,10 @@ export default function RoleBanner() {
     setUsersModal,
     setCategoriesModal,
     toggleLanguage,
-    isOnline
+    isOnline,
+    lastSyncTime,
+    isRefreshing,
+    handleManualRefresh
   } = useApp();
 
   const isAdmin = role === 'admin';
@@ -43,6 +46,24 @@ export default function RoleBanner() {
             />
             <span>{isOnline ? t.cloudSynced : t.localSynced}</span>
           </span>
+
+          {/* Live Sync Timestamp & Force Refresh */}
+          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700/80 text-[10px]">
+            <span className="hidden sm:inline text-slate-400">
+              {lang === 'ar' ? 'مزامنة:' : 'Sync:'}
+            </span>
+            <span className="font-mono text-emerald-300 font-bold">
+              {lastSyncTime ? lastSyncTime.toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : ''}
+            </span>
+            <button
+              onClick={handleManualRefresh}
+              disabled={isRefreshing}
+              className="p-0.5 rounded hover:bg-slate-700 text-slate-300 hover:text-emerald-400 transition"
+              title={lang === 'ar' ? 'تحديث فوري للبيانات من السحابة الآن' : 'Force refresh from cloud now'}
+            >
+              <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin text-emerald-400' : ''}`} />
+            </button>
+          </div>
 
           {/* Current User Profile badge */}
           {currentUser && (

@@ -128,12 +128,28 @@ export function AppProvider({ children }) {
     }
   };
 
+  const [lastSyncTime, setLastSyncTime] = useState(() => new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleManualRefresh = async () => {
+    try {
+      setIsRefreshing(true);
+      await cloudStore.syncFromCloud(true);
+      await refreshData();
+      setLastSyncTime(new Date());
+    } catch (err) {
+      console.warn('Manual refresh notice:', err);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
+
   // Cloud Firestore synchronization on mount to prevent data loss on clearing browser cache
   useEffect(() => {
     let unsubscribe = null;
     async function initCloudSync() {
       try {
-        const res = await cloudStore.syncFromCloud();
+        const res = await cloudStore.syncFromCloud(true);
         if (res && res.success) {
           setIsOnline(true);
         }
@@ -141,9 +157,11 @@ export function AppProvider({ children }) {
         console.warn('Initial cloud sync error:', e);
       } finally {
         await refreshData();
+        setLastSyncTime(new Date());
         // Subscribe to realtime updates from Cloud Firestore
         unsubscribe = cloudStore.subscribeToCloud(() => {
           refreshData();
+          setLastSyncTime(new Date());
         });
       }
     }
@@ -151,6 +169,30 @@ export function AppProvider({ children }) {
 
     return () => {
       if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
+  // Window Focus & Tab Visibility Change (Instant Auto-Sync on Tab Activation & 15s Heartbeat)
+  useEffect(() => {
+    const handleSync = () => {
+      if (document.visibilityState === 'visible') {
+        cloudStore.syncFromCloud(true).then(() => {
+          refreshData();
+          setLastSyncTime(new Date());
+        });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleSync);
+    window.addEventListener('focus', handleSync);
+
+    // Heartbeat auto-polling every 15 seconds to ensure management screen is always updated
+    const interval = setInterval(handleSync, 15000);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleSync);
+      window.removeEventListener('focus', handleSync);
+      clearInterval(interval);
     };
   }, []);
 
@@ -374,7 +416,10 @@ export function AppProvider({ children }) {
         deleteTask,
         saveSettings,
         resetData,
-        refreshData
+        refreshData,
+        lastSyncTime,
+        isRefreshing,
+        handleManualRefresh
       }}
     >
       {children}
