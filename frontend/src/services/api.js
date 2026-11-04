@@ -77,6 +77,10 @@ export const api = {
       await fetch(`${API_BASE}/auth/logout`, { method: 'POST', headers: getHeaders() });
     } catch (e) {}
     localStorage.removeItem('wk_token');
+    localStorage.removeItem('wk_pin');
+    localStorage.removeItem('wk_user');
+    localStorage.setItem('wk_role', 'management');
+    return localStore.logout();
   },
 
   async verifyPin(pin) {

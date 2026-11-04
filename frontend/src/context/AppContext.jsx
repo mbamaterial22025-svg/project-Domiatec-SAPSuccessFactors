@@ -7,7 +7,9 @@ const AppContext = createContext();
 
 export function AppProvider({ children }) {
   const params = new URLSearchParams(window.location.search);
-  const initialMode = params.get('mode') === 'view' ? 'management' : 'admin';
+  const initialMode = params.get('mode') === 'view'
+    ? 'management'
+    : (localStorage.getItem('wk_role') || 'management');
   const initialLang = params.get('lang') === 'en' ? 'en' : 'ar';
 
   const [lang, setLang] = useState(() => localStorage.getItem('wk_lang') || initialLang);
@@ -99,6 +101,11 @@ export function AppProvider({ children }) {
       if (meRes.authenticated && meRes.user) {
         setCurrentUser(meRes.user);
         if (meRes.user.role === 'admin') setRole('admin');
+      } else {
+        setCurrentUser(null);
+        if (!localStorage.getItem('wk_token') && !localStorage.getItem('wk_pin')) {
+          setRole('management');
+        }
       }
 
       setIsOnline(true);
@@ -187,9 +194,16 @@ export function AppProvider({ children }) {
   };
 
   const handleLogout = async () => {
-    await api.logout();
+    localStorage.removeItem('wk_token');
+    localStorage.removeItem('wk_pin');
+    localStorage.removeItem('wk_user');
+    localStorage.setItem('wk_role', 'management');
+    try {
+      await api.logout();
+    } catch (e) {}
     setCurrentUser(null);
     setRole('management');
+    setAdminSidebarOpen(false);
     await refreshData();
   };
 

@@ -104,25 +104,15 @@ export default function RoleBanner() {
             </button>
           </div>
 
-          {/* Logout if authenticated */}
-          {isAdmin && currentUser && (
+          {/* Logout if admin */}
+          {isAdmin && (
             <button
               onClick={handleLogout}
-              className="p-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 transition shadow-xs"
               title={t.logoutBtn}
             >
               <LogOut className="w-3.5 h-3.5" />
-            </button>
-          )}
-
-          {/* Share & Free Web Hosting Guide Button (Admin Only - Hidden in Management View) */}
-          {isAdmin && (
-            <button
-              onClick={() => setBackupModal(true)}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-xs"
-            >
-              <Globe className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{t.btnHostingAndShare}</span>
+              <span>{lang === 'ar' ? 'تسجيل الخروج' : 'Logout'}</span>
             </button>
           )}
 

@@ -20,7 +20,8 @@ import {
   ChevronRight,
   ChevronLeft,
   CheckCircle2,
-  Database
+  Database,
+  LogOut
 } from 'lucide-react';
 
 export default function AdminSidebar() {
@@ -43,6 +44,7 @@ export default function AdminSidebar() {
     adminSidebarOpen,
     setAdminSidebarOpen,
     refreshData,
+    handleLogout,
     isOnline
   } = useApp();
 
@@ -444,7 +446,26 @@ export default function AdminSidebar() {
             </button>
           </div>
 
-          {/* 5. Danger Zone: Factory Reset */}
+          {/* 5. Logout */}
+          <div className="pt-2">
+            <button
+              onClick={() => {
+                handleClose();
+                handleLogout();
+              }}
+              className="w-full p-2.5 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 flex items-center justify-between transition shadow-xs"
+            >
+              <div className="flex items-center gap-2">
+                <LogOut className="w-4 h-4 text-rose-600" />
+                <span>{lang === 'ar' ? 'تسجيل الخروج من الأدمن' : 'Logout from Admin'}</span>
+              </div>
+              <span className="text-[10px] font-bold text-rose-500">
+                {lang === 'ar' ? 'إنهاء الجلسة' : 'Exit'}
+              </span>
+            </button>
+          </div>
+
+          {/* 6. Danger Zone: Factory Reset */}
           <div className="pt-2">
             <button
               onClick={() => {

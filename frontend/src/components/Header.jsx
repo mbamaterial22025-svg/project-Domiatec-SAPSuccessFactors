@@ -16,7 +16,8 @@ import {
   Users,
   FolderKanban,
   DownloadCloud,
-  UploadCloud
+  UploadCloud,
+  LogOut
 } from 'lucide-react';
 
 export default function Header() {
@@ -36,7 +37,8 @@ export default function Header() {
     setResetModal,
     adminSidebarOpen,
     setAdminSidebarOpen,
-    refreshData
+    refreshData,
+    handleLogout
   } = useApp();
 
   const fileInputRef = useRef(null);
@@ -259,10 +261,22 @@ export default function Header() {
             {isAdmin && (
               <button
                 onClick={() => setTaskModal({ isOpen: true, taskId: null, defaultStatus: 'backlog' })}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 transition transform hover:scale-102 active:scale-95"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 transition transform hover:scale-102 active:scale-95"
               >
                 <Plus className="w-4 h-4" />
                 <span>{t.btnAddActivity}</span>
+              </button>
+            )}
+
+            {/* Logout Button for Admin */}
+            {isAdmin && (
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 shadow-xs transition transform hover:scale-102 active:scale-95"
+                title={lang === 'ar' ? 'تسجيل الخروج من صلاحية الأدمن' : 'Logout from Admin'}
+              >
+                <LogOut className="w-4 h-4 text-rose-600" />
+                <span className="hidden sm:inline">{lang === 'ar' ? 'تسجيل الخروج' : 'Logout'}</span>
               </button>
             )}
 
