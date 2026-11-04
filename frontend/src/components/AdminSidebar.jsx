@@ -21,7 +21,9 @@ import {
   ChevronLeft,
   CheckCircle2,
   Database,
-  LogOut
+  LogOut,
+  Layers,
+  ArrowUpRight
 } from 'lucide-react';
 
 export default function AdminSidebar() {
@@ -60,24 +62,35 @@ export default function AdminSidebar() {
     setAdminSidebarOpen(false);
   };
 
+  // Live dynamic counts that update directly
+  const liveUsersCount = (users && users.length > 0)
+    ? users.length
+    : (JSON.parse(localStorage.getItem('wk_store_users') || '[]').length || 1);
+
+  const liveCategoriesCount = (categories && categories.length > 0)
+    ? categories.length
+    : (JSON.parse(localStorage.getItem('wk_store_categories') || '[]').length || 6);
+
+  const liveTasksCount = tasks?.length || 0;
+
   // Client-side CSV Export
   const handleExportCSV = () => {
     try {
       const isAr = lang === 'ar';
       const headers = isAr
-        ? ['المعرف', 'عنوان النشاط (عربي)', 'عنوان النشاط (إنجليزي)', 'المرحلة / القسم', 'الوزن النسبي', 'الحالة', 'تاريخ البدء', 'تاريخ الاستحقاق', 'المسؤول']
-        : ['ID', 'Title (AR)', 'Title (EN)', 'Category', 'Weight', 'Status', 'Start Date', 'Due Date', 'Assignee'];
+        ? ['المعرف', 'عنوان النشاط (عربي)', 'عنوان النشاط (إنجليزي)', 'المرحلة / القسم', 'النقاط / الوزن', 'الحالة', 'تاريخ البدء', 'تاريخ الاستحقاق', 'المسؤول']
+        : ['ID', 'Title (AR)', 'Title (EN)', 'Category', 'Points/Weight', 'Status', 'Start Date', 'Due Date', 'Assignee'];
 
       const statusMap = {
         backlog: isAr ? 'قيد الانتظار' : 'Backlog',
-        in_progress: isAr ? 'قيد التنفيذ' : 'In Progress',
-        testing: isAr ? 'قيد المراجعة والاختبار' : 'Testing/Review',
-        completed: isAr ? 'مكتمل' : 'Completed'
+        inprogress: isAr ? 'قيد التنفيذ' : 'In Progress',
+        review: isAr ? 'قيد المراجعة والاختبار' : 'Review/Testing',
+        done: isAr ? 'مكتمل' : 'Done'
       };
 
       const categoryMap = {};
       (categories || []).forEach(c => {
-        categoryMap[c.key] = isAr ? c.nameAr : c.nameEn;
+        categoryMap[c.id || c.key] = isAr ? c.nameAr : c.nameEn;
       });
 
       const escapeCSV = (val) => {
@@ -89,12 +102,12 @@ export default function AdminSidebar() {
         escapeCSV(task.id),
         escapeCSV(task.titleAr || ''),
         escapeCSV(task.titleEn || task.titleAr || ''),
-        escapeCSV(categoryMap[task.category] || task.category || ''),
-        escapeCSV(task.weight || 1),
+        escapeCSV(categoryMap[task.categoryId || task.category] || task.categoryId || task.category || ''),
+        escapeCSV(task.points || task.weight || 1),
         escapeCSV(statusMap[task.status] || task.status),
         escapeCSV(task.startDate || ''),
         escapeCSV(task.dueDate || ''),
-        escapeCSV(task.assignedTo || '')
+        escapeCSV(task.assigneeAr || task.assignedTo || '')
       ]);
 
       const csvContent = '\uFEFF' + [headers.map(escapeCSV).join(','), ...rows.map(r => r.join(','))].join('\r\n');
@@ -114,7 +127,6 @@ export default function AdminSidebar() {
     }
   };
 
-  // Full JSON Backup Download
   const handleDownloadBackup = async () => {
     try {
       const data = await api.exportJSON();
@@ -133,7 +145,6 @@ export default function AdminSidebar() {
     }
   };
 
-  // Restore Backup
   const handleRestoreFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -166,105 +177,124 @@ export default function AdminSidebar() {
       {/* Backdrop overlay */}
       <div
         onClick={handleClose}
-        className={`fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-xs transition-opacity duration-300 ease-in-out ${
+        className={`fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-xs transition-opacity duration-300 ease-in-out ${
           adminSidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
       />
 
-      {/* Drawer Container */}
+      {/* Modern Drawer Container */}
       <aside
-        className={`fixed top-0 bottom-0 z-50 w-80 sm:w-96 bg-white shadow-2xl flex flex-col transition-all duration-300 ease-out border-slate-200 ${
+        className={`fixed top-0 bottom-0 z-50 w-84 sm:w-96 bg-white shadow-2xl flex flex-col transition-all duration-300 ease-out ${
           isRtl
-            ? `right-0 border-l ${adminSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`
-            : `left-0 border-r ${adminSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`
+            ? `right-0 border-l border-slate-200 ${adminSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`
+            : `left-0 border-r border-slate-200 ${adminSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`
         }`}
       >
-        {/* Drawer Header */}
-        <div className="p-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between shadow-md shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/30">
-              <Sparkles className="w-5 h-5 text-amber-300" />
+        {/* 1. Header with Company Logo & Status */}
+        <div className="p-4 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white shrink-0 shadow-md">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            {/* Domiatec Logo in Menu */}
+            <div className="bg-white px-2.5 py-1.5 rounded-xl shadow-xs border border-white/20 flex items-center">
+              <img
+                src="/domiatec-logo.png"
+                alt="Domiatec Agri-Group"
+                className="h-7 sm:h-8 w-auto object-contain"
+              />
             </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-black px-1.5 py-0.5 rounded-md bg-indigo-500/30 border border-indigo-400/30 text-indigo-200 tracking-wide">
-                  ٢٠٢٦
-                </span>
-                <span className="text-[11px] font-bold text-slate-300 uppercase">
-                  {lang === 'ar' ? 'لوحة تحكم الأدمن' : 'Admin Control'}
-                </span>
-              </div>
-              <h3 className="text-sm font-extrabold text-white mt-0.5 leading-tight truncate max-w-[210px]">
-                {lang === 'ar' ? project.titleAr : project.titleEn}
-              </h3>
-            </div>
+
+            <button
+              onClick={handleClose}
+              className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition duration-200"
+              title={lang === 'ar' ? 'إغلاق القائمة' : 'Close Menu'}
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
-          <button
-            onClick={handleClose}
-            className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition duration-200"
-            title={lang === 'ar' ? 'إغلاق القائمة' : 'Close Menu'}
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-black px-2 py-0.5 rounded-md bg-indigo-500/30 border border-indigo-400/30 text-indigo-200 tracking-wide">
+                  ٢٠٢٦
+                </span>
+                <span className="text-[11px] font-bold text-slate-300">
+                  {lang === 'ar' ? 'لوحة تحكم الأدمن' : 'Admin Control Panel'}
+                </span>
+              </div>
+              <p className="text-xs text-indigo-200/90 font-medium mt-1 truncate max-w-[260px]">
+                {lang === 'ar' ? 'مشروع التحول الرقمي SAP SuccessFactors' : 'SAP SuccessFactors Digital Project'}
+              </p>
+            </div>
+
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>{isOnline ? 'Active' : 'Offline'}</span>
+            </span>
+          </div>
         </div>
 
-        {/* User Badge Profile */}
-        <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs shrink-0">
+        {/* 2. Admin User Bar */}
+        <div className="px-4 py-2.5 bg-slate-50/90 border-b border-slate-200/80 flex items-center justify-between text-xs shrink-0">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-xs">
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 text-white font-bold flex items-center justify-center text-xs shadow-2xs">
               {currentUser?.fullName?.charAt(0) || 'A'}
             </div>
             <div>
-              <p className="font-extrabold text-slate-800 leading-none">
-                {currentUser?.fullName || (lang === 'ar' ? 'مدير النظام' : 'Administrator')}
+              <p className="font-extrabold text-slate-900 leading-none">
+                {currentUser?.fullName || (lang === 'ar' ? 'مدير النظام الرئيسي' : 'Main Admin')}
               </p>
-              <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1 mt-0.5">
+              <span className="text-[10px] text-indigo-600 font-bold flex items-center gap-1 mt-0.5">
                 <ShieldCheck className="w-3 h-3" />
-                <span>{lang === 'ar' ? 'صلاحيات كاملة (Admin)' : 'Full Admin Privileges'}</span>
+                <span>{lang === 'ar' ? 'صلاحيات كاملة' : 'Full Privileges'}</span>
               </span>
             </div>
           </div>
 
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-            {tasks?.length || 0} {lang === 'ar' ? 'أنشطة' : 'tasks'}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="px-2 py-0.5 rounded-lg text-[11px] font-black bg-indigo-100 text-indigo-800 border border-indigo-200">
+              {liveTasksCount} {lang === 'ar' ? 'نشاط' : 'Tasks'}
+            </span>
+          </div>
         </div>
 
-        {/* Scrollable Menu Items */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-5">
-          {/* 1. Primary Action: Add New Activity */}
+        {/* 3. Scrollable Styled Menu Items */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          
+          {/* Quick Action: New Activity */}
           <div>
             <button
               onClick={() => {
                 setTaskModal({ isOpen: true, taskId: null, defaultStatus: 'backlog' });
                 handleClose();
               }}
-              className="w-full py-2.5 px-4 rounded-xl font-black text-sm text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-md shadow-indigo-200 flex items-center justify-between transition-all duration-200 transform active:scale-98"
+              className="w-full py-3 px-4 rounded-xl font-black text-sm text-white bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-700 hover:from-indigo-700 hover:to-violet-800 shadow-md shadow-indigo-300/40 flex items-center justify-between transition-all duration-200 transform hover:scale-[1.01] active:scale-98 group"
             >
-              <div className="flex items-center gap-2">
-                <Plus className="w-5 h-5" />
-                <span>{lang === 'ar' ? 'نشاط جديد' : 'New Activity'}</span>
+              <div className="flex items-center gap-2.5">
+                <div className="p-1 rounded-lg bg-white/20 text-white group-hover:rotate-90 transition-transform duration-300">
+                  <Plus className="w-4 h-4" />
+                </div>
+                <span>{lang === 'ar' ? '+ نشاط جديد للمشروع' : '+ New Project Activity'}</span>
               </div>
-              <ArrowIcon className="w-4 h-4 opacity-80" />
+              <ArrowIcon className="w-4 h-4 opacity-80 group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
 
-          {/* 2. Main Views (Operational Workflow Board, Project Timeline, Executive Summary) */}
-          <div className="space-y-1.5">
-            <p className="text-[11px] font-black uppercase tracking-wider text-slate-400 px-1">
+          {/* Section: Main Display Views */}
+          <div className="bg-slate-50/80 p-2.5 rounded-2xl border border-slate-200/80 space-y-1">
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 px-2 py-1">
               {lang === 'ar' ? 'شاشات العرض والمتابعة' : 'Display Views'}
             </p>
 
+            {/* View 1: Operational Workflow Board */}
             <button
               onClick={() => {
                 setCurrentView('kanban');
                 handleClose();
               }}
-              className={`w-full p-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition ${
+              className={`w-full p-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition-all duration-150 ${
                 currentView === 'kanban'
-                  ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-xs'
-                  : 'text-slate-700 hover:bg-slate-100'
+                  ? 'bg-white text-indigo-700 border border-indigo-200/80 shadow-xs'
+                  : 'text-slate-700 hover:bg-white hover:text-slate-900'
               }`}
             >
               <div className="flex items-center gap-2.5">
@@ -273,18 +303,23 @@ export default function AdminSidebar() {
                 </div>
                 <span>Operational Workflow Board</span>
               </div>
-              {currentView === 'kanban' && <CheckCircle2 className="w-4 h-4 text-indigo-600" />}
+              {currentView === 'kanban' ? (
+                <CheckCircle2 className="w-4 h-4 text-indigo-600" />
+              ) : (
+                <ArrowIcon className="w-3.5 h-3.5 text-slate-400" />
+              )}
             </button>
 
+            {/* View 2: Project Timeline */}
             <button
               onClick={() => {
                 setCurrentView('timeline');
                 handleClose();
               }}
-              className={`w-full p-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition ${
+              className={`w-full p-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition-all duration-150 ${
                 currentView === 'timeline'
-                  ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-xs'
-                  : 'text-slate-700 hover:bg-slate-100'
+                  ? 'bg-white text-indigo-700 border border-indigo-200/80 shadow-xs'
+                  : 'text-slate-700 hover:bg-white hover:text-slate-900'
               }`}
             >
               <div className="flex items-center gap-2.5">
@@ -293,18 +328,23 @@ export default function AdminSidebar() {
                 </div>
                 <span>Project Timeline</span>
               </div>
-              {currentView === 'timeline' && <CheckCircle2 className="w-4 h-4 text-indigo-600" />}
+              {currentView === 'timeline' ? (
+                <CheckCircle2 className="w-4 h-4 text-indigo-600" />
+              ) : (
+                <ArrowIcon className="w-3.5 h-3.5 text-slate-400" />
+              )}
             </button>
 
+            {/* View 3: Executive Summary */}
             <button
               onClick={() => {
                 setCurrentView('executive');
                 handleClose();
               }}
-              className={`w-full p-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition ${
+              className={`w-full p-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition-all duration-150 ${
                 currentView === 'executive'
-                  ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-xs'
-                  : 'text-slate-700 hover:bg-slate-100'
+                  ? 'bg-white text-indigo-700 border border-indigo-200/80 shadow-xs'
+                  : 'text-slate-700 hover:bg-white hover:text-slate-900'
               }`}
             >
               <div className="flex items-center gap-2.5">
@@ -313,23 +353,27 @@ export default function AdminSidebar() {
                 </div>
                 <span>Executive Summary</span>
               </div>
-              {currentView === 'executive' && <CheckCircle2 className="w-4 h-4 text-indigo-600" />}
+              {currentView === 'executive' ? (
+                <CheckCircle2 className="w-4 h-4 text-indigo-600" />
+              ) : (
+                <ArrowIcon className="w-3.5 h-3.5 text-slate-400" />
+              )}
             </button>
           </div>
 
-          {/* 3. Administration Management Tools */}
-          <div className="space-y-1.5">
-            <p className="text-[11px] font-black uppercase tracking-wider text-slate-400 px-1">
+          {/* Section: Administration Management Tools */}
+          <div className="bg-slate-50/80 p-2.5 rounded-2xl border border-slate-200/80 space-y-1">
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 px-2 py-1">
               {lang === 'ar' ? 'إدارة النظام والمشروع' : 'Administration Management'}
             </p>
 
-            {/* Manage Users */}
+            {/* Live User Management with DIRECT UPDATED NUMBER */}
             <button
               onClick={() => {
                 setUsersModal(true);
                 handleClose();
               }}
-              className="w-full p-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-indigo-50/70 hover:text-indigo-700 border border-transparent hover:border-indigo-100 flex items-center justify-between transition"
+              className="w-full p-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-white hover:text-indigo-700 hover:shadow-xs border border-transparent hover:border-slate-200 flex items-center justify-between transition-all"
             >
               <div className="flex items-center gap-2.5">
                 <div className="p-1.5 rounded-lg bg-indigo-100 text-indigo-700">
@@ -337,18 +381,18 @@ export default function AdminSidebar() {
                 </div>
                 <span>{lang === 'ar' ? 'إدارة المستخدمين' : 'User Management'}</span>
               </div>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
-                {users?.length || 1}
+              <span className="px-2.5 py-0.5 text-xs font-black rounded-full bg-indigo-600 text-white shadow-2xs min-w-[24px] text-center">
+                {liveUsersCount}
               </span>
             </button>
 
-            {/* Manage Categories */}
+            {/* Live Categories Management with DIRECT UPDATED NUMBER */}
             <button
               onClick={() => {
                 setCategoriesModal(true);
                 handleClose();
               }}
-              className="w-full p-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-violet-50/70 hover:text-violet-700 border border-transparent hover:border-violet-100 flex items-center justify-between transition"
+              className="w-full p-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-white hover:text-violet-700 hover:shadow-xs border border-transparent hover:border-slate-200 flex items-center justify-between transition-all"
             >
               <div className="flex items-center gap-2.5">
                 <div className="p-1.5 rounded-lg bg-violet-100 text-violet-700">
@@ -356,8 +400,8 @@ export default function AdminSidebar() {
                 </div>
                 <span>{lang === 'ar' ? 'إدارة الفئات' : 'Categories Management'}</span>
               </div>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
-                {categories?.length || 5}
+              <span className="px-2.5 py-0.5 text-xs font-black rounded-full bg-violet-600 text-white shadow-2xs min-w-[24px] text-center">
+                {liveCategoriesCount}
               </span>
             </button>
 
@@ -367,7 +411,7 @@ export default function AdminSidebar() {
                 setSettingsModal(true);
                 handleClose();
               }}
-              className="w-full p-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-amber-50/70 hover:text-amber-800 border border-transparent hover:border-amber-100 flex items-center justify-between transition"
+              className="w-full p-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-white hover:text-amber-800 hover:shadow-xs border border-transparent hover:border-slate-200 flex items-center justify-between transition-all"
             >
               <div className="flex items-center gap-2.5">
                 <div className="p-1.5 rounded-lg bg-amber-100 text-amber-800">
@@ -375,16 +419,16 @@ export default function AdminSidebar() {
                 </div>
                 <span>{lang === 'ar' ? `حد التنفيذ: ${project.wipLimit} ن` : `WIP Limit: ${project.wipLimit} pts`}</span>
               </div>
-              <span className="text-[10px] text-amber-700 font-extrabold uppercase">
+              <span className="text-[10px] text-amber-800 font-black uppercase px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200">
                 {lang === 'ar' ? 'تعديل' : 'Edit'}
               </span>
             </button>
           </div>
 
-          {/* 4. Export & Backup Services */}
-          <div className="space-y-1.5">
-            <p className="text-[11px] font-black uppercase tracking-wider text-slate-400 px-1">
-              {lang === 'ar' ? 'التصدير والنسخ الاحتياطي' : 'Export & Backup'}
+          {/* Section: Data Services & Export */}
+          <div className="bg-slate-50/80 p-2.5 rounded-2xl border border-slate-200/80 space-y-1">
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 px-2 py-1">
+              {lang === 'ar' ? 'التصدير والنسخ الاحتياطي' : 'Export & Backup Services'}
             </p>
 
             {/* Export Excel/CSV */}
@@ -393,7 +437,7 @@ export default function AdminSidebar() {
                 handleExportCSV();
                 handleClose();
               }}
-              className="w-full p-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-emerald-50/70 hover:text-emerald-700 border border-transparent hover:border-emerald-100 flex items-center justify-between transition"
+              className="w-full p-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-white hover:text-emerald-700 hover:shadow-xs border border-transparent hover:border-slate-200 flex items-center justify-between transition-all"
             >
               <div className="flex items-center gap-2.5">
                 <div className="p-1.5 rounded-lg bg-emerald-100 text-emerald-700">
@@ -401,7 +445,9 @@ export default function AdminSidebar() {
                 </div>
                 <span>{lang === 'ar' ? 'تصدير Excel/CSV' : 'Export Excel/CSV'}</span>
               </div>
-              <ArrowIcon className="w-4 h-4 text-slate-400" />
+              <span className="text-[10px] text-emerald-700 font-extrabold px-1.5 py-0.5 rounded-md bg-emerald-50 border border-emerald-200">
+                .CSV
+              </span>
             </button>
 
             {/* Full JSON Backup */}
@@ -410,7 +456,7 @@ export default function AdminSidebar() {
                 handleDownloadBackup();
                 handleClose();
               }}
-              className="w-full p-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-sky-50/70 hover:text-sky-700 border border-transparent hover:border-sky-100 flex items-center justify-between transition"
+              className="w-full p-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-white hover:text-sky-700 hover:shadow-xs border border-transparent hover:border-slate-200 flex items-center justify-between transition-all"
             >
               <div className="flex items-center gap-2.5">
                 <div className="p-1.5 rounded-lg bg-sky-100 text-sky-700">
@@ -418,7 +464,9 @@ export default function AdminSidebar() {
                 </div>
                 <span>{lang === 'ar' ? 'نسخة احتياطية' : 'Take Full Backup'}</span>
               </div>
-              <span className="text-[10px] text-sky-700 font-extrabold">.JSON</span>
+              <span className="text-[10px] text-sky-700 font-extrabold px-1.5 py-0.5 rounded-md bg-sky-50 border border-sky-200">
+                .JSON
+              </span>
             </button>
 
             {/* Restore Backup */}
@@ -434,7 +482,7 @@ export default function AdminSidebar() {
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-full p-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-purple-50/70 hover:text-purple-700 border border-transparent hover:border-purple-100 flex items-center justify-between transition"
+              className="w-full p-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-white hover:text-purple-700 hover:shadow-xs border border-transparent hover:border-slate-200 flex items-center justify-between transition-all"
             >
               <div className="flex items-center gap-2.5">
                 <div className="p-1.5 rounded-lg bg-purple-100 text-purple-700">
@@ -442,61 +490,65 @@ export default function AdminSidebar() {
                 </div>
                 <span>{lang === 'ar' ? 'استرجاع نسخة' : 'Restore Backup'}</span>
               </div>
-              <span className="text-[10px] text-purple-700 font-extrabold">.JSON</span>
+              <span className="text-[10px] text-purple-700 font-extrabold px-1.5 py-0.5 rounded-md bg-purple-50 border border-purple-200">
+                .JSON
+              </span>
             </button>
           </div>
 
-          {/* 5. Logout */}
-          <div className="pt-2">
+          {/* Section: Session & Danger Zone */}
+          <div className="space-y-2 pt-1">
+            {/* Logout Button */}
             <button
               onClick={() => {
                 handleClose();
                 handleLogout();
               }}
-              className="w-full p-2.5 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 flex items-center justify-between transition shadow-xs"
+              className="w-full p-2.5 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 flex items-center justify-between transition-all shadow-2xs group"
             >
-              <div className="flex items-center gap-2">
-                <LogOut className="w-4 h-4 text-rose-600" />
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 rounded-lg bg-rose-200/80 text-rose-700 group-hover:scale-105 transition-transform">
+                  <LogOut className="w-4 h-4" />
+                </div>
                 <span>{lang === 'ar' ? 'تسجيل الخروج من الأدمن' : 'Logout from Admin'}</span>
               </div>
-              <span className="text-[10px] font-bold text-rose-500">
-                {lang === 'ar' ? 'إنهاء الجلسة' : 'Exit'}
+              <span className="text-[10px] font-black text-rose-600 uppercase px-2 py-0.5 rounded-md bg-white border border-rose-200">
+                {lang === 'ar' ? 'خروج' : 'Exit'}
               </span>
             </button>
-          </div>
 
-          {/* 6. Danger Zone: Factory Reset */}
-          <div className="pt-2">
+            {/* Protected Factory Reset */}
             <button
               onClick={() => {
                 setResetModal(true);
                 handleClose();
               }}
-              className="w-full p-2.5 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 border border-rose-200 flex items-center justify-between transition"
+              className="w-full p-2.5 rounded-xl text-xs font-bold text-slate-600 hover:text-rose-600 hover:bg-rose-50/50 border border-slate-200 flex items-center justify-between transition-all"
             >
               <div className="flex items-center gap-2">
-                <RotateCcw className="w-4 h-4 text-rose-600" />
+                <RotateCcw className="w-4 h-4 text-slate-500 hover:text-rose-600" />
                 <span>{lang === 'ar' ? 'استعادة ضبط المصنع (محمي)' : 'Protected Factory Reset'}</span>
               </div>
-              <span className="text-[10px] font-bold text-rose-500">
-                {lang === 'ar' ? 'كلمة المرور' : 'Password'}
+              <span className="text-[10px] font-bold text-slate-400">
+                {lang === 'ar' ? 'بكلمة المرور' : 'Password'}
               </span>
             </button>
           </div>
+
         </div>
 
-        {/* Drawer Footer */}
-        <div className="p-4 bg-slate-50 border-t border-slate-200 shrink-0 text-xs flex items-center justify-between">
-          <div className="flex items-center gap-1.5 text-slate-500">
-            <Database className="w-3.5 h-3.5 text-indigo-500" />
-            <span className="text-[11px] font-bold">
-              {isOnline ? (lang === 'ar' ? 'البيانات متصلة سحابياً' : 'Cloud Connected') : (lang === 'ar' ? 'حفظ محلي فوري' : 'Local Storage')}
+        {/* 4. Drawer Footer */}
+        <div className="p-3.5 bg-slate-50 border-t border-slate-200 shrink-0 text-xs flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-slate-600">
+            <Database className="w-3.5 h-3.5 text-indigo-600" />
+            <span className="text-[11px] font-extrabold">
+              {isOnline ? (lang === 'ar' ? 'متصل سحابياً (Firestore)' : 'Cloud Connected') : (lang === 'ar' ? 'حفظ محلي' : 'Local Storage')}
             </span>
           </div>
 
           <button
             onClick={handleClose}
-            className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 font-bold hover:bg-slate-100 text-[11px] transition"
+            className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-700 font-bold hover:bg-slate-100 text-[11px] transition shadow-2xs"
           >
             {lang === 'ar' ? 'إغلاق' : 'Close'}
           </button>
@@ -505,4 +557,3 @@ export default function AdminSidebar() {
     </>
   );
 }
-

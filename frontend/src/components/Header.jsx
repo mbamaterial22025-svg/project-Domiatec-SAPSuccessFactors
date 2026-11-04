@@ -175,8 +175,13 @@ export default function Header() {
               </button>
             )}
 
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-md shadow-indigo-200 shrink-0">
-              <Kanban className="w-5 h-5" />
+            {/* Domiatec Official Company Logo */}
+            <div className="flex items-center ps-0.5 pe-2.5 py-1 bg-white rounded-xl border border-slate-200/90 shadow-2xs shrink-0">
+              <img
+                src="/domiatec-logo.png"
+                alt="Domiatec Agri-Group"
+                className="h-8 sm:h-9 w-auto object-contain transition-transform duration-300 hover:scale-105"
+              />
             </div>
 
             <div>
@@ -265,18 +270,6 @@ export default function Header() {
               >
                 <Plus className="w-4 h-4" />
                 <span>{t.btnAddActivity}</span>
-              </button>
-            )}
-
-            {/* Logout Button for Admin */}
-            {isAdmin && (
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 shadow-xs transition transform hover:scale-102 active:scale-95"
-                title={lang === 'ar' ? 'تسجيل الخروج من صلاحية الأدمن' : 'Logout from Admin'}
-              >
-                <LogOut className="w-4 h-4 text-rose-600" />
-                <span className="hidden sm:inline">{lang === 'ar' ? 'تسجيل الخروج' : 'Logout'}</span>
               </button>
             )}
 

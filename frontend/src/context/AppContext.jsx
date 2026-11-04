@@ -85,18 +85,20 @@ export function AppProvider({ children }) {
   const refreshData = async () => {
     try {
       setLoading(true);
-      const [projRes, tasksRes, metricsRes, catRes, meRes] = await Promise.all([
+      const [projRes, tasksRes, metricsRes, catRes, meRes, usersRes] = await Promise.all([
         api.getProject(),
         api.getTasks(filters),
         api.getMetrics(),
         api.getCategories(),
-        api.getMe()
+        api.getMe(),
+        api.getUsers()
       ]);
 
       if (projRes.project) setProject(projRes.project);
       if (tasksRes.tasks) setTasks(tasksRes.tasks);
       if (metricsRes.metrics) setMetrics(metricsRes.metrics);
       if (catRes.categories) setCategories(catRes.categories);
+      if (usersRes && usersRes.users) setUsers(usersRes.users);
 
       if (meRes.authenticated && meRes.user) {
         setCurrentUser(meRes.user);
@@ -118,10 +120,9 @@ export function AppProvider({ children }) {
   };
 
   const fetchUsers = async () => {
-    if (role !== 'admin') return;
     try {
       const data = await api.getUsers();
-      if (data.users) setUsers(data.users);
+      if (data && data.users) setUsers(data.users);
     } catch (err) {
       console.error('Failed to load users:', err);
     }
