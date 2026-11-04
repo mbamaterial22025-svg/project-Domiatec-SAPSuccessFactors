@@ -157,29 +157,13 @@ export default function Header() {
 
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-3">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3.5">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-2.5">
+        <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
           
-          {/* Brand & Project Title & Admin Drawer Toggle */}
+          {/* Brand & Project Identity */}
           <div className="flex items-center gap-3">
-            {/* Admin Animated Sidebar Toggle Button */}
-            {isAdmin && (
-              <button
-                onClick={() => setAdminSidebarOpen(true)}
-                className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-700 hover:from-indigo-700 hover:to-violet-800 text-white shadow-md shadow-indigo-300/40 transition-all duration-300 transform hover:scale-102 active:scale-95 group shrink-0"
-                title={lang === 'ar' ? 'فتح لوحة تحكم وإدارة النظام' : 'Open Admin Panel'}
-              >
-                <div className="relative flex items-center justify-center">
-                  <SlidersHorizontal className="w-4 h-4 transition-transform duration-300 group-hover:rotate-180" />
-                  <span className="absolute -top-1 -end-1 w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                  <span className="absolute -top-1 -end-1 w-2 h-2 rounded-full bg-emerald-400" />
-                </div>
-                <span className="hidden sm:inline">{lang === 'ar' ? 'لوحة تحكم الأدمن' : 'Admin Panel'}</span>
-              </button>
-            )}
-
             {/* Domiatec Official Company Logo */}
-            <div className="flex items-center ps-0.5 pe-2.5 py-1 bg-white rounded-xl border border-slate-200/90 shadow-2xs shrink-0">
+            <div className="flex items-center px-2 py-1 bg-white rounded-xl border border-slate-200 shadow-2xs shrink-0">
               <img
                 src="/domiatec-logo.png"
                 alt="Domiatec Agri-Group"
@@ -187,7 +171,11 @@ export default function Header() {
               />
             </div>
 
-            <div>
+            {/* Subtle Divider */}
+            <div className="h-9 w-px bg-slate-200 hidden sm:block shrink-0" />
+
+            {/* Project Details */}
+            <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200">
                   ٢٠٢٦
@@ -197,15 +185,8 @@ export default function Header() {
                   {t.systemTag}
                 </span>
 
-                {!isAdmin && (
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 inline-flex items-center gap-1">
-                    <Eye className="w-3 h-3" />
-                    <span>{t.readOnlyBadge}</span>
-                  </span>
-                )}
-
                 <span className="text-xs text-slate-500 hidden sm:flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5" />
+                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
                   <span>{currentDateStr}</span>
                 </span>
               </div>
@@ -213,78 +194,97 @@ export default function Header() {
               <div className="flex items-center gap-2 mt-0.5">
                 <h1
                   onClick={() => isAdmin && setSettingsModal(true)}
-                  className={`text-base sm:text-lg font-extrabold text-slate-900 transition flex items-center gap-1.5 ${
+                  className={`text-base sm:text-lg font-black text-slate-900 transition flex items-center gap-1.5 truncate ${
                     isAdmin ? 'cursor-pointer hover:text-indigo-600' : ''
                   }`}
+                  title={isAdmin ? (lang === 'ar' ? 'انقر لتعديل عنوان المشروع' : 'Click to edit project settings') : ''}
                 >
-                  <span>{projectTitle}</span>
-                  {isAdmin && <PenLine className="w-4 h-4 text-slate-400 hover:text-indigo-600" />}
+                  <span className="truncate">{projectTitle}</span>
+                  {isAdmin && <PenLine className="w-4 h-4 text-slate-400 hover:text-indigo-600 shrink-0" />}
                 </h1>
               </div>
             </div>
           </div>
 
-          {/* View Switcher & Action Controls */}
-          <div className="flex flex-wrap items-center gap-2.5">
+          {/* Unified Single-Row Toolbar: View Switcher + Actions */}
+          <div className="flex items-center justify-start xl:justify-end gap-2.5 overflow-x-auto no-scrollbar py-0.5">
+            
             {/* 3 Views: Operational Workflow Board | Project Timeline | Executive Summary */}
-            <div className="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200">
+            <div className="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200 shrink-0 shadow-2xs">
               <button
                 onClick={() => setCurrentView('kanban')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition ${
                   currentView === 'kanban'
                     ? 'bg-white text-indigo-600 shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <Columns4 className="w-4 h-4" />
-                <span>{t.tabKanban}</span>
+                <Columns4 className="w-3.5 h-3.5" />
+                <span>Operational Workflow Board</span>
               </button>
 
               <button
                 onClick={() => setCurrentView('timeline')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition ${
                   currentView === 'timeline'
                     ? 'bg-white text-indigo-600 shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <GanttChart className="w-4 h-4" />
-                <span>{t.tabTimeline}</span>
+                <GanttChart className="w-3.5 h-3.5" />
+                <span>Project Timeline</span>
               </button>
 
               <button
                 onClick={() => setCurrentView('executive')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition ${
                   currentView === 'executive'
                     ? 'bg-white text-indigo-600 shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <PieChart className="w-4 h-4" />
-                <span>{t.tabExecutive}</span>
+                <PieChart className="w-3.5 h-3.5" />
+                <span>Executive Summary</span>
               </button>
             </div>
 
-            {/* Instant Cloud Sync Button (Always Available for Management & Admin) */}
+            {/* Subtle Divider */}
+            <div className="h-7 w-px bg-slate-200 hidden md:block shrink-0" />
+
+            {/* Instant Cloud Sync Button */}
             <button
               onClick={handleManualRefresh}
               disabled={isRefreshing}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-indigo-700 border border-slate-200 transition shadow-2xs active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-indigo-700 border border-slate-200 transition shadow-2xs active:scale-95 shrink-0"
               title={lang === 'ar' ? 'تحديث فوري لجميع البيانات والمستجدات من السحابة' : 'Instant sync with cloud'}
             >
               <RefreshCw className={`w-3.5 h-3.5 text-indigo-600 ${isRefreshing ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">{lang === 'ar' ? 'تحديث فوري' : 'Live Sync'}</span>
+              <span>{lang === 'ar' ? 'تحديث فوري' : 'Live Sync'}</span>
             </button>
 
-            {/* Quick Add Activity Button for Admin */}
+            {/* Admin Controls */}
             {isAdmin && (
-              <button
-                onClick={() => setTaskModal({ isOpen: true, taskId: null, defaultStatus: 'backlog' })}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 transition transform hover:scale-102 active:scale-95"
-              >
-                <Plus className="w-4 h-4" />
-                <span>{t.btnAddActivity}</span>
-              </button>
+              <>
+                {/* Admin Animated Sidebar Toggle Button */}
+                <button
+                  onClick={() => setAdminSidebarOpen(true)}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-700 hover:from-indigo-700 hover:to-violet-800 text-white shadow-md shadow-indigo-300/30 transition transform hover:scale-102 active:scale-95 shrink-0"
+                  title={lang === 'ar' ? 'فتح لوحة تحكم وإدارة النظام' : 'Open Admin Panel'}
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  <span>{lang === 'ar' ? 'لوحة التحكم' : 'Admin Panel'}</span>
+                </button>
+
+                {/* Quick Add Activity Button */}
+                <button
+                  onClick={() => setTaskModal({ isOpen: true, taskId: null, defaultStatus: 'backlog' })}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 transition transform hover:scale-102 active:scale-95 shrink-0"
+                  title={t.btnAddActivity}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>{t.btnAddActivity}</span>
+                </button>
+              </>
             )}
 
           </div>

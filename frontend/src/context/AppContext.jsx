@@ -316,6 +316,7 @@ export function AppProvider({ children }) {
         await api.createUser(userData);
       }
       await fetchUsers();
+      await refreshData();
     } catch (err) {
       throw err;
     }
@@ -325,6 +326,7 @@ export function AppProvider({ children }) {
     try {
       await api.deleteUser(userId);
       await fetchUsers();
+      await refreshData();
     } catch (err) {
       throw err;
     }

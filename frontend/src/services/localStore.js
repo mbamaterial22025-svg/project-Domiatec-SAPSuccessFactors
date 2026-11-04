@@ -286,15 +286,15 @@ function getStored(key, fallback) {
   }
 }
 
-function setStored(key, val, shouldSyncCloud = true) {
+async function setStored(key, val, shouldSyncCloud = true) {
   try {
     localStorage.setItem(key, JSON.stringify(val));
     if (shouldSyncCloud) {
       const cleanData = cleanForFirestore(val);
-      if (key === STORAGE_KEYS.TASKS) cloudStore.updateField('tasks', cleanData);
-      else if (key === STORAGE_KEYS.CATEGORIES) cloudStore.updateField('categories', cleanData);
-      else if (key === STORAGE_KEYS.USERS) cloudStore.updateField('users', cleanData);
-      else if (key === STORAGE_KEYS.PROJECT) cloudStore.updateField('project', cleanData);
+      if (key === STORAGE_KEYS.TASKS) await cloudStore.updateField('tasks', cleanData);
+      else if (key === STORAGE_KEYS.CATEGORIES) await cloudStore.updateField('categories', cleanData);
+      else if (key === STORAGE_KEYS.USERS) await cloudStore.updateField('users', cleanData);
+      else if (key === STORAGE_KEYS.PROJECT) await cloudStore.updateField('project', cleanData);
     }
   } catch (e) {
     console.error('LocalStorage write error', e);
@@ -425,7 +425,7 @@ export const localStore = {
     };
   },
 
-  createUser(userData) {
+  async createUser(userData) {
     this.init();
     const users = getStored(STORAGE_KEYS.USERS, DEFAULT_USERS);
     if (users.some(u => (u.username || '').toLowerCase() === (userData.username || '').toLowerCase())) {
@@ -441,11 +441,11 @@ export const localStore = {
       createdAt: new Date().toISOString()
     };
     users.push(newUser);
-    setStored(STORAGE_KEYS.USERS, users);
+    await setStored(STORAGE_KEYS.USERS, users);
     return { success: true, user: { id: newUser.id, username: newUser.username, fullName: newUser.fullName, role: newUser.role, pin: newUser.pin } };
   },
 
-  updateUser(id, userData) {
+  async updateUser(id, userData) {
     this.init();
     const users = getStored(STORAGE_KEYS.USERS, DEFAULT_USERS);
     const idx = users.findIndex(u => String(u.id) === String(id));
@@ -457,16 +457,16 @@ export const localStore = {
     if (userData.password) users[idx].passwordHash = userData.password;
     if (userData.pin !== undefined) users[idx].pin = userData.pin ? userData.pin.toString().trim() : '';
 
-    setStored(STORAGE_KEYS.USERS, users);
+    await setStored(STORAGE_KEYS.USERS, users);
     return { success: true, user: users[idx] };
   },
 
-  deleteUser(id) {
+  async deleteUser(id) {
     this.init();
     const users = getStored(STORAGE_KEYS.USERS, DEFAULT_USERS);
     if (users.length <= 1) throw new Error('لا يمكن حذف المستخدم الوحيد المتبقي');
     const filtered = users.filter(u => String(u.id) !== String(id));
-    setStored(STORAGE_KEYS.USERS, filtered);
+    await setStored(STORAGE_KEYS.USERS, filtered);
     return { success: true };
   },
 
@@ -490,12 +490,12 @@ export const localStore = {
     return { categories: getStored(STORAGE_KEYS.CATEGORIES, DEFAULT_CATEGORIES) };
   },
 
-  createCategory(data) {
+  async createCategory(data) {
     this.init();
     const cats = getStored(STORAGE_KEYS.CATEGORIES, DEFAULT_CATEGORIES);
     const newCat = {
       id: data.id || ('cat_' + Date.now()),
-      key: data.key || ('cat_' + Date.now()),
+      key: data.key || data.id || ('cat_' + Date.now()),
       nameAr: data.nameAr,
       nameEn: data.nameEn || data.nameAr,
       color: data.color || '#3b82f6',
@@ -503,25 +503,25 @@ export const localStore = {
       isDefault: 0
     };
     cats.push(newCat);
-    setStored(STORAGE_KEYS.CATEGORIES, cats);
+    await setStored(STORAGE_KEYS.CATEGORIES, cats);
     return { success: true, category: newCat };
   },
 
-  updateCategory(id, data) {
+  async updateCategory(id, data) {
     this.init();
     const cats = getStored(STORAGE_KEYS.CATEGORIES, DEFAULT_CATEGORIES);
     const idx = cats.findIndex(c => String(c.id) === String(id) || c.key === id);
     if (idx === -1) throw new Error('القسم غير موجود');
     cats[idx] = { ...cats[idx], ...data };
-    setStored(STORAGE_KEYS.CATEGORIES, cats);
+    await setStored(STORAGE_KEYS.CATEGORIES, cats);
     return { success: true, category: cats[idx] };
   },
 
-  deleteCategory(id) {
+  async deleteCategory(id) {
     this.init();
     const cats = getStored(STORAGE_KEYS.CATEGORIES, DEFAULT_CATEGORIES);
     const filtered = cats.filter(c => String(c.id) !== String(id) && c.key !== id);
-    setStored(STORAGE_KEYS.CATEGORIES, filtered);
+    await setStored(STORAGE_KEYS.CATEGORIES, filtered);
     return { success: true };
   },
 

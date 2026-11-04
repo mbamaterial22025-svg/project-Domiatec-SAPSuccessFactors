@@ -62,14 +62,14 @@ export default function AdminSidebar() {
     setAdminSidebarOpen(false);
   };
 
-  // Live dynamic counts that update directly
-  const liveUsersCount = (users && users.length > 0)
+  // Live dynamic counts bound directly to AppContext state
+  const liveUsersCount = Array.isArray(users) && users.length >= 0
     ? users.length
-    : (JSON.parse(localStorage.getItem('wk_store_users') || '[]').length || 1);
+    : (JSON.parse(localStorage.getItem('wk_store_users') || '[]').length || 0);
 
-  const liveCategoriesCount = (categories && categories.length > 0)
+  const liveCategoriesCount = Array.isArray(categories) && categories.length >= 0
     ? categories.length
-    : (JSON.parse(localStorage.getItem('wk_store_categories') || '[]').length || 6);
+    : (JSON.parse(localStorage.getItem('wk_store_categories') || '[]').length || 0);
 
   const liveTasksCount = tasks?.length || 0;
 

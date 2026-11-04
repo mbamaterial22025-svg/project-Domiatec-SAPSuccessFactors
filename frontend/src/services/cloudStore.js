@@ -48,10 +48,10 @@ export const cloudStore = {
           const normalized = cloudData.tasks.map(normalizeTask);
           localStorage.setItem('wk_store_tasks', JSON.stringify(normalized));
         }
-        if (cloudData.categories && Array.isArray(cloudData.categories) && cloudData.categories.length > 0) {
+        if (cloudData.categories && Array.isArray(cloudData.categories)) {
           localStorage.setItem('wk_store_categories', JSON.stringify(cloudData.categories));
         }
-        if (cloudData.users && Array.isArray(cloudData.users) && cloudData.users.length > 0) {
+        if (cloudData.users && Array.isArray(cloudData.users)) {
           localStorage.setItem('wk_store_users', JSON.stringify(cloudData.users));
         }
         if (cloudData.project && (cloudData.project.titleAr || cloudData.project.title_ar)) {
@@ -90,11 +90,11 @@ export const cloudStore = {
             localStorage.setItem('wk_store_tasks', JSON.stringify(normalized));
             changed = true;
           }
-          if (cloudData.categories && Array.isArray(cloudData.categories) && cloudData.categories.length > 0) {
+          if (cloudData.categories && Array.isArray(cloudData.categories)) {
             localStorage.setItem('wk_store_categories', JSON.stringify(cloudData.categories));
             changed = true;
           }
-          if (cloudData.users && Array.isArray(cloudData.users) && cloudData.users.length > 0) {
+          if (cloudData.users && Array.isArray(cloudData.users)) {
             localStorage.setItem('wk_store_users', JSON.stringify(cloudData.users));
             changed = true;
           }
