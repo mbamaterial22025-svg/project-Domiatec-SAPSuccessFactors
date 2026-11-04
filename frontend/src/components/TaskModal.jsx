@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { PlusCircle, Edit, X } from 'lucide-react';
 
@@ -22,10 +22,20 @@ export default function TaskModal() {
   });
 
   const [dateError, setDateError] = useState(false);
+  const initializedForRef = useRef(null);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      initializedForRef.current = null;
+      return;
+    }
 
+    const sessionKey = taskId ? `edit_${taskId}` : `new_${defaultStatus || 'backlog'}`;
+    if (initializedForRef.current === sessionKey) {
+      return; // Already initialized for this modal session! Protect user's typing
+    }
+
+    initializedForRef.current = sessionKey;
     setDateError(false);
 
     if (taskId) {
@@ -64,7 +74,7 @@ export default function TaskModal() {
         notesEn: ''
       });
     }
-  }, [isOpen, taskId, defaultStatus, tasks]);
+  }, [isOpen, taskId, defaultStatus]);
 
   if (!isOpen || role !== 'admin') return null;
 

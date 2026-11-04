@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { SlidersHorizontal, X } from 'lucide-react';
 
@@ -10,14 +10,22 @@ export default function SettingsModal() {
   const [wipLimit, setWipLimit] = useState(15);
   const [pin, setPin] = useState('1234');
 
+  const initializedRef = useRef(false);
+
   useEffect(() => {
-    if (settingsModal) {
+    if (!settingsModal) {
+      initializedRef.current = false;
+      return;
+    }
+
+    if (!initializedRef.current) {
+      initializedRef.current = true;
       setTitleAr(project.titleAr || '');
       setTitleEn(project.titleEn || '');
       setWipLimit(project.wipLimit || 15);
       setPin(adminPin || '1234');
     }
-  }, [settingsModal, project, adminPin]);
+  }, [settingsModal]);
 
   if (!settingsModal || role !== 'admin') return null;
 

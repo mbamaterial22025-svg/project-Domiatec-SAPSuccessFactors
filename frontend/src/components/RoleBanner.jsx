@@ -17,7 +17,8 @@ export default function RoleBanner() {
     isOnline,
     lastSyncTime,
     isRefreshing,
-    handleManualRefresh
+    handleManualRefresh,
+    isAutoSyncPaused
   } = useApp();
 
   const isAdmin = role === 'admin';
@@ -41,10 +42,18 @@ export default function RoleBanner() {
           <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-300">
             <span
               className={`w-2 h-2 rounded-full ${
-                isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-sky-400'
+                isAutoSyncPaused
+                  ? 'bg-amber-400'
+                  : isOnline
+                  ? 'bg-emerald-400 animate-pulse'
+                  : 'bg-sky-400'
               }`}
             />
-            <span>{isOnline ? t.cloudSynced : t.localSynced}</span>
+            <span>
+              {isAutoSyncPaused
+                ? (lang === 'ar' ? 'التحديث مؤقت أثناء التعديل (حماية البيانات)' : 'Auto-sync paused during editing')
+                : (isOnline ? t.cloudSynced : t.localSynced)}
+            </span>
           </span>
 
           {/* Live Sync Timestamp & Force Refresh */}

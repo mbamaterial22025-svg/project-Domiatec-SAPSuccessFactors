@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { translations } from '../i18n/translations';
 import { api } from '../services/api';
 import { cloudStore } from '../services/cloudStore';
@@ -56,6 +56,34 @@ export function AppProvider({ children }) {
   const [backupModal, setBackupModal] = useState(false);
   const [resetModal, setResetModal] = useState(false);
   const [adminSidebarOpen, setAdminSidebarOpen] = useState(false);
+
+  // Modal & active interaction tracking for sync suppression
+  const isAnyModalOpen = Boolean(
+    taskModal.isOpen ||
+    settingsModal ||
+    usersModal ||
+    categoriesModal ||
+    resetModal ||
+    backupModal ||
+    loginModal
+  );
+
+  const isModalOpenRef = useRef(isAnyModalOpen);
+  useEffect(() => {
+    isModalOpenRef.current = isAnyModalOpen;
+  }, [isAnyModalOpen]);
+
+  // Check if any modal is open OR user is actively typing in an input/textarea
+  const isUserInteracting = () => {
+    if (isModalOpenRef.current) return true;
+    if (typeof document !== 'undefined' && document.activeElement) {
+      const tag = document.activeElement.tagName ? document.activeElement.tagName.toUpperCase() : '';
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) || document.activeElement.isContentEditable) {
+        return true;
+      }
+    }
+    return false;
+  };
 
   const t = translations[lang] || translations.ar;
 
@@ -160,6 +188,10 @@ export function AppProvider({ children }) {
         setLastSyncTime(new Date());
         // Subscribe to realtime updates from Cloud Firestore
         unsubscribe = cloudStore.subscribeToCloud(() => {
+          if (isUserInteracting()) {
+            console.log('Realtime sync skipped: user is currently creating/editing');
+            return;
+          }
           refreshData();
           setLastSyncTime(new Date());
         });
@@ -175,10 +207,18 @@ export function AppProvider({ children }) {
   // Window Focus & Tab Visibility Change (Instant Auto-Sync on Tab Activation & 15s Heartbeat)
   useEffect(() => {
     const handleSync = () => {
+      if (isUserInteracting()) {
+        console.log('Auto-sync skipped: editing or modal active');
+        return;
+      }
       if (document.visibilityState === 'visible') {
         cloudStore.syncFromCloud(true).then(() => {
-          refreshData();
-          setLastSyncTime(new Date());
+          if (!isUserInteracting()) {
+            refreshData();
+            setLastSyncTime(new Date());
+          }
+        }).catch(err => {
+          console.warn('Auto-sync notice:', err);
         });
       }
     };
@@ -195,6 +235,23 @@ export function AppProvider({ children }) {
       clearInterval(interval);
     };
   }, []);
+
+  // Resume & trigger sync when user finishes/closes a modal
+  const prevModalOpenRef = useRef(false);
+  useEffect(() => {
+    if (prevModalOpenRef.current && !isAnyModalOpen) {
+      const timer = setTimeout(() => {
+        if (!isUserInteracting()) {
+          cloudStore.syncFromCloud(true).then(() => {
+            refreshData();
+            setLastSyncTime(new Date());
+          }).catch(() => {});
+        }
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+    prevModalOpenRef.current = isAnyModalOpen;
+  }, [isAnyModalOpen]);
 
   useEffect(() => {
     refreshData();
@@ -419,7 +476,8 @@ export function AppProvider({ children }) {
         refreshData,
         lastSyncTime,
         isRefreshing,
-        handleManualRefresh
+        handleManualRefresh,
+        isAutoSyncPaused: isAnyModalOpen
       }}
     >
       {children}
