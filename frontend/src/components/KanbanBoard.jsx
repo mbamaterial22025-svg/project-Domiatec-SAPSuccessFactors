@@ -4,7 +4,7 @@ import TaskCard from './TaskCard';
 import { Plus, AlertOctagon, Inbox } from 'lucide-react';
 
 export default function KanbanBoard() {
-  const { t, role, tasks, project, moveTask, setTaskModal } = useApp();
+  const { lang, t, role, tasks, allTasks, setFilters, project, moveTask, setTaskModal } = useApp();
   const isAdmin = role === 'admin';
   const [dragOverCol, setDragOverCol] = useState(null);
 
@@ -59,6 +59,30 @@ export default function KanbanBoard() {
 
   return (
     <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 flex-1 items-start">
+      {/* Empty State Banner when filters return zero results */}
+      {tasks.length === 0 && (
+        <div className="col-span-full bg-white rounded-2xl p-8 border border-slate-200 text-center shadow-xs flex flex-col items-center justify-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <Inbox className="w-6 h-6" />
+          </div>
+          <div>
+            <h4 className="text-base font-bold text-slate-800">
+              {lang === 'ar' ? 'لا توجد أنشطة تطابق الفلتر المحدد' : 'No activities match the selected filter'}
+            </h4>
+            <p className="text-xs text-slate-500 mt-1">
+              {lang === 'ar'
+                ? 'جرب اختيار مسؤول آخر أو موعد استحقاق مختلف أو قم بإلغاء الفلاتر لعرض كافة الأنشطة.'
+                : 'Try selecting a different assignee or deadline, or reset filters to view all activities.'}
+            </p>
+          </div>
+          <button
+            onClick={() => setFilters({ search: '', category: 'all', deadline: 'all', assignee: 'all' })}
+            className="mt-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-sm"
+          >
+            {lang === 'ar' ? 'إعادة ضبط الفلاتر وعرض كافة الأنشطة' : 'Reset Filters & Show All'}
+          </button>
+        </div>
+      )}
       {columns.map(col => {
         const colTasks = tasks.filter(t => t.status === col.id);
         const colPoints = colTasks.reduce((sum, t) => sum + (Number(t.points) || 0), 0);

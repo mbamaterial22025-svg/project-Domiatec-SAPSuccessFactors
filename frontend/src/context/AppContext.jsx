@@ -33,6 +33,7 @@ export function AppProvider({ children }) {
   });
 
   const [tasks, setTasks] = useState([]);
+  const [allTasks, setAllTasks] = useState([]);
   const [metrics, setMetrics] = useState(null);
   const [categories, setCategories] = useState([]);
   const [users, setUsers] = useState([]);
@@ -113,8 +114,9 @@ export function AppProvider({ children }) {
   const refreshData = async () => {
     try {
       setLoading(true);
-      const [projRes, tasksRes, metricsRes, catRes, meRes, usersRes] = await Promise.all([
+      const [projRes, allTasksRes, tasksRes, metricsRes, catRes, meRes, usersRes] = await Promise.all([
         api.getProject(),
+        api.getTasks({}),
         api.getTasks(filters),
         api.getMetrics(),
         api.getCategories(),
@@ -123,6 +125,7 @@ export function AppProvider({ children }) {
       ]);
 
       if (projRes.project) setProject(projRes.project);
+      if (allTasksRes && allTasksRes.tasks) setAllTasks(allTasksRes.tasks);
       if (tasksRes.tasks) setTasks(tasksRes.tasks);
       if (metricsRes.metrics) setMetrics(metricsRes.metrics);
       if (catRes.categories) setCategories(catRes.categories);
@@ -439,6 +442,7 @@ export function AppProvider({ children }) {
         setTimelineSort,
         project,
         tasks,
+        allTasks,
         metrics,
         categories,
         users,

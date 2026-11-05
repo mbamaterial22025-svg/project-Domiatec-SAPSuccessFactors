@@ -1,7 +1,7 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getFirestore, doc, getDoc, getDocFromServer, setDoc, onSnapshot } from 'firebase/firestore';
-import { firebaseConfig } from './firebaseConfig';
-import { normalizeTask, DEFAULT_PROJECT, DEFAULT_CATEGORIES, DEFAULT_USERS, DEFAULT_TASKS } from './localStore';
+import { firebaseConfig } from './firebaseConfig.js';
+import { normalizeTask, DEFAULT_PROJECT, DEFAULT_CATEGORIES, DEFAULT_USERS, DEFAULT_TASKS } from './localStore.js';
 
 let db = null;
 let isInitialized = false;

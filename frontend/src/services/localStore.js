@@ -1,6 +1,6 @@
 // Standalone Client-Side Store for Firebase Hosting / Cloud Sync
 // Provides full persistence backed by Google Cloud Firestore and LocalStorage
-import { cloudStore } from './cloudStore';
+import { cloudStore } from './cloudStore.js';
 
 const STORAGE_KEYS = {
   PROJECT: 'wk_store_project',
@@ -81,7 +81,7 @@ export const DEFAULT_TASKS = [
     weight: 3,
     status: "backlog",
     startDate: "2026-11-01",
-    dueDate: "2026-11-15",
+    dueDate: "2026-11-03",
     assigneeAr: "فريق الموارد البشرية - دومياتك",
     assigneeEn: "Domiatec HR Team",
     assignedTo: "Domiatec HR Team",
@@ -403,6 +403,55 @@ export const DEFAULT_TASKS = [
   }
 ];
 
+export function getDeadlineStatus(task) {
+  if (!task) return { code: 'ontrack', labelAr: '', labelEn: '', daysDiff: 99 };
+  if (task.status === 'done') {
+    return { code: 'done', labelAr: 'مكتمل ✓', labelEn: 'Completed ✓', daysDiff: 0 };
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (!task.dueDate) {
+    return { code: 'ontrack', labelAr: 'في المسار الصحيح', labelEn: 'On Track', daysDiff: 99 };
+  }
+
+  const due = new Date(task.dueDate + 'T00:00:00');
+  const diffTime = due.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) {
+    const late = Math.abs(diffDays);
+    return {
+      code: 'overdue',
+      daysDiff: diffDays,
+      labelAr: `متأخر منذ ${late} ${late === 1 ? 'يوم' : 'أيام'}`,
+      labelEn: `Overdue by ${late} ${late === 1 ? 'day' : 'days'}`
+    };
+  } else if (diffDays === 0) {
+    return {
+      code: 'soon',
+      daysDiff: 0,
+      labelAr: 'يستحق اليوم!',
+      labelEn: 'Due Today!'
+    };
+  } else if (diffDays <= 3) {
+    return {
+      code: 'soon',
+      daysDiff: diffDays,
+      labelAr: `باقي ${diffDays} ${diffDays === 1 ? 'يوم' : 'أيام'}`,
+      labelEn: `${diffDays} ${diffDays === 1 ? 'day' : 'days'} left`
+    };
+  } else {
+    return {
+      code: 'ontrack',
+      daysDiff: diffDays,
+      labelAr: `باقي ${diffDays} يوم`,
+      labelEn: `${diffDays} days left`
+    };
+  }
+}
+
 export function normalizeTask(t) {
   if (!t) return null;
   const statusMap = {
@@ -422,7 +471,7 @@ export function normalizeTask(t) {
   const notesAr = t.notesAr || t.descriptionAr || '';
   const notesEn = t.notesEn || t.descriptionEn || '';
 
-  return {
+  const taskObj = {
     id: t.id ? String(t.id) : ('t-' + Date.now()),
     projectId: t.projectId || 'main-project',
     titleAr: t.titleAr || '',
@@ -439,7 +488,7 @@ export function normalizeTask(t) {
     dueDate: t.dueDate || new Date().toISOString().split('T')[0],
     assigneeAr: assigneeAr,
     assigneeEn: t.assigneeEn || assigneeAr,
-    assignedTo: assigneeAr,
+    assignedTo: t.assignedTo || assigneeAr,
     notesAr: notesAr,
     descriptionAr: notesAr,
     notesEn: notesEn,
@@ -449,6 +498,8 @@ export function normalizeTask(t) {
     createdAt: t.createdAt || new Date().toISOString(),
     updatedAt: t.updatedAt || new Date().toISOString()
   };
+  taskObj.deadlineInfo = getDeadlineStatus(taskObj);
+  return taskObj;
 }
 
 function cleanForFirestore(obj) {
@@ -705,27 +756,69 @@ export const localStore = {
     return { success: true };
   },
 
-  // Tasks
+    // Tasks
   getTasks(filters = {}) {
     this.init();
     let tasks = getStored(STORAGE_KEYS.TASKS, DEFAULT_TASKS).map(normalizeTask);
 
-    if (filters.search) {
-      const q = filters.search.toLowerCase();
+    if (filters.search && filters.search.trim() !== '') {
+      const q = filters.search.trim().toLowerCase();
       tasks = tasks.filter(t => 
         (t.titleAr && t.titleAr.toLowerCase().includes(q)) ||
         (t.titleEn && t.titleEn.toLowerCase().includes(q)) ||
         (t.notesAr && t.notesAr.toLowerCase().includes(q)) ||
+        (t.notesEn && t.notesEn.toLowerCase().includes(q)) ||
         (t.assigneeAr && t.assigneeAr.toLowerCase().includes(q)) ||
+        (t.assigneeEn && t.assigneeEn.toLowerCase().includes(q)) ||
         (t.assignedTo && t.assignedTo.toLowerCase().includes(q))
       );
     }
+
     if (filters.category && filters.category !== 'all') {
-      tasks = tasks.filter(t => t.categoryId === filters.category || t.category === filters.category);
+      const c = String(filters.category).trim().toLowerCase();
+      tasks = tasks.filter(t => 
+        String(t.categoryId || '').toLowerCase() === c || 
+        String(t.category || '').toLowerCase() === c
+      );
     }
+
     if (filters.assignee && filters.assignee !== 'all') {
-      tasks = tasks.filter(t => t.assigneeAr === filters.assignee || t.assignedTo === filters.assignee);
+      const selected = String(filters.assignee).trim().toLowerCase();
+      tasks = tasks.filter(t => {
+        const ar = (t.assigneeAr || '').trim().toLowerCase();
+        const en = (t.assigneeEn || '').trim().toLowerCase();
+        const raw = (t.assignedTo || '').trim().toLowerCase();
+
+        if (ar === selected || en === selected || raw === selected) return true;
+
+        if ((selected.includes('solex') && selected.includes('domiatec')) ||
+            (selected.includes('سولكس') && selected.includes('دومياتك'))) {
+          return (ar.includes('سولكس') && ar.includes('دومياتك')) || 
+                 (en.includes('solex') && en.includes('domiatec'));
+        }
+
+        if (selected.includes('domiatec') || selected.includes('دومياتك') || selected.includes('hr') || selected.includes('بشرية')) {
+          if (!selected.includes('solex') && !selected.includes('سولكس')) {
+            return (!ar.includes('سولكس') && (ar.includes('دومياتك') || ar.includes('بشرية'))) ||
+                   (!en.includes('solex') && en.includes('domiatec'));
+          }
+        }
+
+        if (selected === 'solex' || selected === 'سولكس للاستشارات' || selected === 'سولكس') {
+          return (ar === 'سولكس للاستشارات' || ar === 'سولكس') || (en === 'solex');
+        }
+
+        return ar.includes(selected) || en.includes(selected) || selected.includes(ar) || selected.includes(en);
+      });
     }
+
+    if (filters.deadline && filters.deadline !== 'all') {
+      tasks = tasks.filter(t => {
+        const dl = t.deadlineInfo || getDeadlineStatus(t);
+        return dl.code === filters.deadline;
+      });
+    }
+
     if (filters.status && filters.status !== 'all') {
       tasks = tasks.filter(t => t.status === filters.status);
     }

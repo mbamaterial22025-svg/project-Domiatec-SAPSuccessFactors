@@ -1,19 +1,37 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { Search } from 'lucide-react';
+import { Search, RotateCcw } from 'lucide-react';
 
 export default function FilterBar() {
-  const { lang, t, filters, setFilters, tasks, categories } = useApp();
+  const { lang, t, filters, setFilters, tasks, allTasks, categories } = useApp();
+
+  // Base tasks for options: use allTasks so dropdown options never vanish when filtered!
+  const baseTasks = allTasks && allTasks.length > 0 ? allTasks : tasks;
 
   // Extract unique assignees from tasks
   const assignees = Array.from(
     new Set(
-      tasks
-        .map(t => (lang === 'en' ? t.assigneeEn || t.assigneeAr : t.assigneeAr || t.assigneeEn))
+      baseTasks.map(t => (lang === 'en' ? t.assigneeEn || t.assigneeAr : t.assigneeAr || t.assigneeEn))
         .filter(Boolean)
         .map(s => s.trim())
     )
   );
+
+    const isFilterActive = Boolean(
+    (filters.search && filters.search.trim() !== '') ||
+    (filters.category && filters.category !== 'all') ||
+    (filters.deadline && filters.deadline !== 'all') ||
+    (filters.assignee && filters.assignee !== 'all')
+  );
+
+  const handleResetFilters = () => {
+    setFilters({
+      search: '',
+      category: 'all',
+      deadline: 'all',
+      assignee: 'all'
+    });
+  };
 
   const handleSearchChange = (e) => {
     setFilters(prev => ({ ...prev, search: e.target.value }));
@@ -85,10 +103,26 @@ export default function FilterBar() {
             </option>
           ))}
         </select>
+        {/* Reset Filter Button (Visible when any filter is active) */}
+        {isFilterActive && (
+          <button
+            onClick={handleResetFilters}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition shadow-2xs"
+            title={lang === 'ar' ? 'إعادة تعيين كافة الفلاتر' : 'Reset all filters'}
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>{lang === 'ar' ? 'مسح الفلاتر' : 'Reset Filters'}</span>
+          </button>
+        )}
       </div>
 
       {/* Quick Legend for Alerts */}
-      <div className="flex items-center gap-2 text-xs text-slate-500">
+      <div className="flex items-center gap-3 text-xs text-slate-500">
+        <span className="font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-lg text-[11px]">
+          {lang === 'ar'
+            ? `عرض ${tasks?.length || 0} من أصل ${baseTasks?.length || 0} نشاط`
+            : `Showing ${tasks?.length || 0} of ${baseTasks?.length || 0} activities`}
+        </span>
         <span className="hidden xl:inline font-semibold">{t.legendAlertsLabel}</span>
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 font-semibold">
           {t.badgeOverdue}
