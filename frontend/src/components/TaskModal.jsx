@@ -6,11 +6,13 @@ export default function TaskModal() {
   const { lang, t, role, taskModal, setTaskModal, tasks, categories, saveTask } = useApp();
   const { isOpen, taskId, defaultStatus } = taskModal;
 
+  const defaultCatId = categories && categories.length > 0 ? categories[0].id : 'Policies & Business Rules';
+
   const [formData, setFormData] = useState({
     id: '',
     titleAr: '',
     titleEn: '',
-    categoryId: 'frontend',
+    categoryId: defaultCatId,
     points: 3,
     startDate: '',
     dueDate: '',
@@ -38,6 +40,8 @@ export default function TaskModal() {
     initializedForRef.current = sessionKey;
     setDateError(false);
 
+    const activeCatId = categories && categories.length > 0 ? categories[0].id : 'Policies & Business Rules';
+
     if (taskId) {
       const task = tasks.find(t => t.id === taskId);
       if (task) {
@@ -45,7 +49,7 @@ export default function TaskModal() {
           id: task.id,
           titleAr: task.titleAr || '',
           titleEn: task.titleEn || '',
-          categoryId: task.categoryId || 'frontend',
+          categoryId: task.categoryId || activeCatId,
           points: task.points || 3,
           startDate: task.startDate || '',
           dueDate: task.dueDate || '',
@@ -63,7 +67,7 @@ export default function TaskModal() {
         id: '',
         titleAr: '',
         titleEn: '',
-        categoryId: 'frontend',
+        categoryId: activeCatId,
         points: 3,
         startDate: today,
         dueDate: nextWeek,
@@ -74,7 +78,7 @@ export default function TaskModal() {
         notesEn: ''
       });
     }
-  }, [isOpen, taskId, defaultStatus]);
+  }, [isOpen, taskId, defaultStatus, categories]);
 
   if (!isOpen || role !== 'admin') return null;
 
@@ -85,7 +89,18 @@ export default function TaskModal() {
       return;
     }
     setDateError(false);
-    saveTask(formData);
+
+    const chosenCatId = formData.categoryId || defaultCatId;
+    const matchedCat = categories?.find(c => c.id === chosenCatId || c.key === chosenCatId);
+
+    saveTask({
+      ...formData,
+      categoryId: chosenCatId,
+      category: chosenCatId,
+      categoryNameAr: matchedCat?.nameAr || '',
+      categoryNameEn: matchedCat?.nameEn || '',
+      categoryColor: matchedCat?.color || '#7c3aed'
+    });
   };
 
   return (

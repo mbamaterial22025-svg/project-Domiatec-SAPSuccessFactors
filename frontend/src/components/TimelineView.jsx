@@ -12,7 +12,7 @@ const categoryStyles = {
 };
 
 export default function TimelineView() {
-  const { lang, t, role, tasks, timelineSort, setTimelineSort, setTaskModal, deleteTask } = useApp();
+  const { lang, t, role, tasks, categories, timelineSort, setTimelineSort, setTaskModal, deleteTask } = useApp();
   const isAdmin = role === 'admin';
 
   const statusMap = {
@@ -98,8 +98,11 @@ export default function TimelineView() {
               sortedTasks.map(task => {
                 const title = lang === 'en' ? task.titleEn || task.titleAr : task.titleAr || task.titleEn;
                 const assignee = lang === 'en' ? task.assigneeEn || task.assigneeAr : task.assigneeAr || task.assigneeEn;
-                const catName = lang === 'en' ? task.categoryNameEn || task.categoryId : task.categoryNameAr || task.categoryId;
-                const catClass = categoryStyles[task.categoryId] || 'bg-slate-100 text-slate-700 border-slate-200';
+                const currentCat = categories?.find(c => c.id === task.categoryId || c.key === task.categoryId);
+                const catName = currentCat
+                  ? (lang === 'en' ? currentCat.nameEn || currentCat.nameAr : currentCat.nameAr || currentCat.nameEn)
+                  : (lang === 'en' ? task.categoryNameEn || task.categoryId : task.categoryNameAr || task.categoryId);
+                const catClass = currentCat?.colorClass || categoryStyles[task.categoryId] || 'bg-slate-100 text-slate-700 border-slate-200';
                 const st = statusMap[task.status] || statusMap.backlog;
                 const dl = task.deadlineInfo || { code: 'ontrack', labelAr: '', labelEn: '' };
                 const dlLabel = lang === 'en' ? dl.labelEn || dl.labelAr : dl.labelAr || dl.labelEn;

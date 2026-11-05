@@ -26,7 +26,7 @@ const categoryStyles = {
 const statusOrder = ['backlog', 'inprogress', 'review', 'done'];
 
 export default function TaskCard({ task }) {
-  const { lang, t, role, moveTask, deleteTask, setTaskModal } = useApp();
+  const { lang, t, role, categories, moveTask, deleteTask, setTaskModal } = useApp();
   const isAdmin = role === 'admin';
 
   const title = lang === 'en' ? task.titleEn || task.titleAr : task.titleAr || task.titleEn;
@@ -44,10 +44,11 @@ export default function TaskCard({ task }) {
   const arrowSymbol = lang === 'ar' ? '←' : '→';
 
   // Category display
-  const catClass = categoryStyles[task.categoryId] || 'bg-slate-100 text-slate-700 border-slate-200';
-  const catName = lang === 'en'
-    ? task.categoryNameEn || task.categoryId
-    : task.categoryNameAr || task.categoryId;
+  const currentCat = categories?.find(c => c.id === task.categoryId || c.key === task.categoryId);
+  const catClass = currentCat?.colorClass || categoryStyles[task.categoryId] || 'bg-slate-100 text-slate-700 border-slate-200';
+  const catName = currentCat
+    ? (lang === 'en' ? currentCat.nameEn || currentCat.nameAr : currentCat.nameAr || currentCat.nameEn)
+    : (lang === 'en' ? task.categoryNameEn || task.categoryId : task.categoryNameAr || task.categoryId);
 
   // Deadline info
   const dl = task.deadlineInfo || { code: 'ontrack', labelAr: '', labelEn: '' };
