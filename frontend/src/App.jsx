@@ -34,8 +34,8 @@ export default function App() {
         {/* KPI Metrics & Progress */}
         <KpiMetrics />
 
-        {/* Filter and Search Bar */}
-        <FilterBar />
+        {/* Filter and Search Bar (Visible on Operational & Timeline boards, hidden in Executive Summary) */}
+        {currentView !== 'executive' && <FilterBar />}
 
         {/* Dynamic View Display */}
         {currentView === 'kanban' && <KanbanBoard />}
