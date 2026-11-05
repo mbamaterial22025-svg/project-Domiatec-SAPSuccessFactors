@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { translations } from '../i18n/translations';
 import { api } from '../services/api';
-import { cloudStore } from '../services/cloudStore';
+import { cloudStore } from '../services/cloudStore.js';
+import { calculateProjectMetrics } from '../services/localStore.js';
 
 const AppContext = createContext();
 
@@ -260,6 +261,13 @@ export function AppProvider({ children }) {
     refreshData();
   }, [filters]);
 
+  // Ensure metrics are always reactive and mathematically consistent with allTasks
+  useEffect(() => {
+    if (allTasks && allTasks.length > 0) {
+      setMetrics(calculateProjectMetrics(allTasks, project, categories));
+    }
+  }, [allTasks, project, categories]);
+
   useEffect(() => {
     if (usersModal && role === 'admin') {
       fetchUsers();
@@ -368,6 +376,11 @@ export function AppProvider({ children }) {
 
     // Optimistic UI update
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
+    setAllTasks(prev => {
+      const updated = prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t);
+      setMetrics(calculateProjectMetrics(updated, project, categories));
+      return updated;
+    });
 
     try {
       await api.updateTaskStatus(taskId, newStatus);

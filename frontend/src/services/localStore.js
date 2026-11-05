@@ -532,6 +532,145 @@ async function setStored(key, val, shouldSyncCloud = true) {
   }
 }
 
+export function calculateProjectMetrics(tasks = [], project = DEFAULT_PROJECT, categories = DEFAULT_CATEGORIES) {
+  let totalPoints = 0;
+  let donePoints = 0;
+  let reviewPoints = 0;
+  let inProgressPoints = 0;
+  let backlogPoints = 0;
+
+  let overdueCount = 0;
+  let overduePoints = 0;
+  let dueSoonCount = 0;
+  let dueSoonPoints = 0;
+
+  const counts = { backlog: 0, inprogress: 0, review: 0, done: 0 };
+  const points = { backlog: 0, inprogress: 0, review: 0, done: 0 };
+  const assigneeMap = {};
+
+  tasks.forEach(task => {
+    const pts = Number(task.points || task.weight) || 3;
+    totalPoints += pts;
+
+    const st = task.status || 'backlog';
+    if (counts[st] !== undefined) {
+      counts[st] += 1;
+      points[st] += pts;
+    }
+
+    if (st === 'done') {
+      donePoints += pts;
+    } else if (st === 'review') {
+      reviewPoints += pts;
+    } else if (st === 'inprogress') {
+      inProgressPoints += pts;
+    } else {
+      backlogPoints += pts;
+    }
+
+    const dl = task.deadlineInfo || getDeadlineStatus(task);
+    if (dl.code === 'overdue') {
+      overdueCount++;
+      overduePoints += pts;
+    } else if (dl.code === 'soon') {
+      dueSoonCount++;
+      dueSoonPoints += pts;
+    }
+
+    // Assignee workload
+    const nameAr = (task.assigneeAr || task.assignedTo || '').trim() || 'غير محدد';
+    const nameEn = (task.assigneeEn || '').trim() || nameAr;
+    const key = nameAr;
+
+    if (!assigneeMap[key]) {
+      assigneeMap[key] = {
+        nameAr,
+        nameEn,
+        totalPoints: 0,
+        donePoints: 0,
+        inProgressPoints: 0,
+        taskCount: 0
+      };
+    }
+    assigneeMap[key].totalPoints += pts;
+    assigneeMap[key].taskCount += 1;
+    if (st === 'done') assigneeMap[key].donePoints += pts;
+    if (st === 'inprogress') assigneeMap[key].inProgressPoints += pts;
+  });
+
+  const wipLimit = Number(project?.wipLimit) || 15;
+  let wipStatus = 'safe';
+  if (inProgressPoints > wipLimit) {
+    wipStatus = 'exceeded';
+  } else if (inProgressPoints >= wipLimit * 0.85) {
+    wipStatus = 'warning';
+  }
+
+  const weightedPercent = totalPoints > 0 ? Math.round((donePoints / totalPoints) * 100) : 0;
+  const reviewPercent = totalPoints > 0 ? Number(((reviewPoints / totalPoints) * 100).toFixed(1)) : 0;
+  const inProgressPercent = totalPoints > 0 ? Number(((inProgressPoints / totalPoints) * 100).toFixed(1)) : 0;
+
+  // Category breakdown
+  const categoryBreakdown = (categories || []).map(cat => {
+    const catTasks = tasks.filter(t => t.categoryId === cat.id || t.category === cat.id || t.category === cat.key);
+    const catTotal = catTasks.reduce((acc, t) => acc + (Number(t.points || t.weight) || 3), 0);
+    const catDone = catTasks.filter(t => t.status === 'done').reduce((acc, t) => acc + (Number(t.points || t.weight) || 3), 0);
+    const pct = catTotal > 0 ? Math.round((catDone / catTotal) * 100) : 0;
+
+    return {
+      id: cat.id || cat.key,
+      key: cat.key || cat.id,
+      nameAr: cat.nameAr,
+      nameEn: cat.nameEn,
+      color: cat.color,
+      colorClass: cat.colorClass || 'bg-slate-50 text-slate-700 border-slate-200',
+      icon: cat.icon || 'folder',
+      totalPoints: catTotal,
+      totalWeight: catTotal,
+      donePoints: catDone,
+      completedWeight: catDone,
+      taskCount: catTasks.length,
+      completionPercent: pct,
+      completionRate: pct
+    };
+  }).filter(c => c.taskCount > 0);
+
+  const assigneeBreakdown = Object.values(assigneeMap).map(a => ({
+    ...a,
+    completionPercent: a.totalPoints > 0 ? Math.round((a.donePoints / a.totalPoints) * 100) : 0
+  }));
+
+  return {
+    totalPoints,
+    totalTasks: tasks.length,
+    totalWeight: totalPoints,
+    donePoints,
+    completedPoints: donePoints,
+    completedWeight: donePoints,
+    reviewPoints,
+    inProgressPoints,
+    backlogPoints,
+    weightedPercent,
+    completionRate: weightedPercent,
+    reviewPercent,
+    inProgressPercent,
+    wipLimit,
+    wipStatus,
+    wipCount: inProgressPoints,
+    wipExceeded: inProgressPoints > wipLimit,
+    wipExceededBy: Math.max(0, inProgressPoints - wipLimit),
+    overdueCount,
+    overduePoints,
+    dueSoonCount,
+    dueSoonPoints,
+    counts,
+    points,
+    weights: points,
+    categoryBreakdown,
+    assigneeBreakdown
+  };
+}
+
 export const localStore = {
   init() {
     if (!localStorage.getItem(STORAGE_KEYS.PROJECT)) {
@@ -883,88 +1022,15 @@ export const localStore = {
     return { success: true };
   },
 
+
   // Metrics
   getMetrics() {
     this.init();
     const tasks = getStored(STORAGE_KEYS.TASKS, DEFAULT_TASKS).map(normalizeTask);
     const proj = getStored(STORAGE_KEYS.PROJECT, DEFAULT_PROJECT);
     const cats = getStored(STORAGE_KEYS.CATEGORIES, DEFAULT_CATEGORIES);
-
-    let totalWeight = 0;
-    let completedWeight = 0;
-    let inProgressCount = 0;
-    let overdueCount = 0;
-    let dueSoonCount = 0;
-
-    const todayStr = formatDate(0);
-    const soonDate = formatDate(3);
-
-    const counts = { backlog: 0, inprogress: 0, review: 0, done: 0 };
-    const points = { backlog: 0, inprogress: 0, review: 0, done: 0 };
-
-    tasks.forEach(t => {
-      const pt = Number(t.points || t.weight) || 1;
-      totalWeight += pt;
-
-      const st = t.status || 'backlog';
-      if (counts[st] !== undefined) {
-        counts[st] += 1;
-        points[st] += pt;
-      }
-
-      if (st === 'done') {
-        completedWeight += pt;
-      }
-      if (st === 'inprogress') {
-        inProgressCount += pt;
-      }
-      if (st !== 'done' && t.dueDate && t.dueDate < todayStr) {
-        overdueCount += 1;
-      }
-      if (st !== 'done' && t.dueDate && t.dueDate >= todayStr && t.dueDate <= soonDate) {
-        dueSoonCount += 1;
-      }
-    });
-
-    const completionRate = totalWeight > 0 ? Math.round((completedWeight / totalWeight) * 100) : 0;
-    const wipLimit = proj.wipLimit || 15;
-    const wipExceeded = inProgressCount > wipLimit;
-
-    const categoryBreakdown = cats.map(c => {
-      const cTasks = tasks.filter(t => t.categoryId === c.id || t.category === c.id || t.category === c.key);
-      const cTotalW = cTasks.reduce((sum, t) => sum + (Number(t.points || t.weight) || 1), 0);
-      const cCompW = cTasks.filter(t => t.status === 'done').reduce((sum, t) => sum + (Number(t.points || t.weight) || 1), 0);
-      const cPct = cTotalW > 0 ? Math.round((cCompW / cTotalW) * 100) : 0;
-      return {
-        key: c.key || c.id,
-        nameAr: c.nameAr,
-        nameEn: c.nameEn,
-        color: c.color,
-        taskCount: cTasks.length,
-        totalWeight: cTotalW,
-        completedWeight: cCompW,
-        completionRate: cPct
-      };
-    });
-
     return {
-      metrics: {
-        totalTasks: tasks.length,
-        totalPoints: totalWeight,
-        totalWeight,
-        completedPoints: completedWeight,
-        completedWeight,
-        completionRate,
-        wipCount: inProgressCount,
-        wipLimit,
-        wipExceeded,
-        overdueCount,
-        dueSoonCount,
-        counts,
-        points,
-        weights: points,
-        categoryBreakdown
-      }
+      metrics: calculateProjectMetrics(tasks, proj, cats)
     };
   },
 

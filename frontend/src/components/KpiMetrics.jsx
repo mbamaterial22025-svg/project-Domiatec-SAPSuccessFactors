@@ -157,7 +157,7 @@ export default function KpiMetrics() {
           <div className="mt-2">
             <div className="text-2xl font-black text-rose-600">
               <span>{overdueCount}</span>{' '}
-              <span className="text-xs font-bold text-slate-500">{t.activitySingular}</span>
+              <span className="text-xs font-bold text-slate-500">{overdueCount === 1 ? t.activitySingular : t.activitiesWord}</span>
             </div>
             <div className="text-xs text-slate-500 mt-0.5">
               <span>{t.totalWord} </span>
@@ -178,7 +178,7 @@ export default function KpiMetrics() {
           <div className="mt-2">
             <div className="text-2xl font-black text-amber-600">
               <span>{dueSoonCount}</span>{' '}
-              <span className="text-xs font-bold text-slate-500">{t.activitySingular}</span>
+              <span className="text-xs font-bold text-slate-500">{dueSoonCount === 1 ? t.activitySingular : t.activitiesWord}</span>
             </div>
             <div className="text-xs text-slate-500 mt-0.5">
               <span>{t.totalWord} </span>
